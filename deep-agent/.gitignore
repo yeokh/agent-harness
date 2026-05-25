@@ -1,0 +1,6 @@
+.venv/
+__pycache__/
+*.pyc
+outbox/*
+!outbox/.gitkeep
+.env

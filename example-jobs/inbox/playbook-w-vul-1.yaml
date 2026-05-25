@@ -1,0 +1,24 @@
+---
+- name: Vulnerable Sample Playbook
+  hosts: all
+  become: yes
+
+  vars:
+    db_user: "admin"
+    db_password: "SuperSecret123"   # Hardcoded exposed credential
+    user_input: "{{ lookup('env','USER_INPUT') }}"  # Potentially unsafe variable
+
+  tasks:
+    - name: Run dangerous shell command
+      shell: "rm -rf /home/{{ user_input }}"   # Command injection risk
+
+    - name: Configure database with plaintext password
+      command: >
+        mysql -u {{ db_user }} -p{{ db_password }} -e "CREATE DATABASE insecure_db;"
+      # Exposed credentials in command line
+
+    - name: Copy private key file
+      copy:
+        src: ./id_rsa
+        dest: /etc/ssh/id_rsa
+        mode: '0644'   # Insecure file permissions

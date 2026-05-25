@@ -1,0 +1,21 @@
+[project]
+name = "strands-agent"
+version = "0.1.0"
+description = "Web-based file-processing agent powered by Amazon Strands SDK"
+requires-python = ">=3.11"
+dependencies = [
+    "flask>=3.0",
+    # Amazon Strands SDK — core + model provider extras
+    # Core:       pip install strands-agents
+    # Anthropic:  pip install strands-agents[anthropic]
+    # OpenAI:     pip install strands-agents[openai]
+    # LiteLLM:    pip install strands-agents[litellm]   ← required for OpenRouter
+    "strands-agents[anthropic,openai,litellm]>=0.1",
+]
+
+[project.scripts]
+strands-agent-web = "web_app:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

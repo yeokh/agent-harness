@@ -1,0 +1,28 @@
+---
+- name: Highly Vulnerable Playbook
+  hosts: webservers
+  become: yes
+
+  vars:
+    api_key: "ABCD-1234-SECRET"   # Hardcoded exposed credential
+    admin_password: "PlainTextPass!"  # Another exposed credential
+    user_input: "{{ lookup('env','SCRIPT_INPUT') }}"  # Potential injection source
+
+  tasks:
+    - name: Run user-provided script (injection risk)
+      shell: "bash -c '{{ user_input }}'"   # Executes arbitrary input
+
+    - name: Write sensitive credentials to log file
+      shell: "echo 'Admin password: {{ admin_password }}' >> /var/log/playbook.log"
+      # Credentials exposed in logs
+
+    - name: Deploy application with API key in environment
+      command: >
+        docker run -e API_KEY={{ api_key }} myapp:latest
+      # API key exposed in container runtime
+
+    - name: Copy SSL private key with insecure permissions
+      copy:
+        src: ./server.key
+        dest: /etc/ssl/private/server.key
+        mode: '0666'   # World-readable private key

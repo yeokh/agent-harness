@@ -1,0 +1,33 @@
+---
+- name: Secure Playbook Example
+  hosts: webservers
+  become: yes
+
+  vars_files:
+    - vault.yml   # Sensitive values stored securely in Ansible Vault
+
+  tasks:
+    - name: Run predefined script safely
+      script: ./deploy.sh   # Controlled script, not arbitrary user input
+
+    - name: Configure application without exposing credentials
+      community.mysql.mysql_db:
+        name: secure_db
+        state: present
+        login_user: "{{ vault_db_user }}"
+        login_password: "{{ vault_db_password }}"
+      # Credentials retrieved securely from Vault
+
+    - name: Deploy application with secrets injected securely
+      docker_container:
+        name: myapp
+        image: myapp:latest
+        env:
+          API_KEY: "{{ vault_api_key }}"
+      # API key provided securely via Vault variable
+
+    - name: Copy SSL private key with secure permissions
+      copy:
+        src: ./server.key
+        dest: /etc/ssl/private/server.key
+        mode: '0600'   # Owner-only access

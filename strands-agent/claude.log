@@ -1,0 +1,64 @@
+❯ Please review the project in "/mnt/c/DevWorks/agent-harness/adk-agent" and the web ui of the Flask python program.
+
+  This project demonstrate the capability of an AI agent to process all the files in the "inbox" folder, according to
+  the instruction and skill found in the same folder.
+
+  Write the output files, including the processing summary log in the "outbox" folder.
+
+  I want you to create a new folder in "/root/claude/wrk/strands-agent" and re-implement this project using Amazon
+  Strands (https://github.com/strands-agents/sdk-python) as the AI agent.
+
+  I want you to keep web_app.py to handle only the web ui based on Flask, and a separate python program for the AI
+  agent based on Amazon Strands - https://github.com/strands-agents/sdk-python.
+
+  Enable support for OPENROUTER_API_KEY, OPENAI_API_KEY and ANTHROPIC_API_KEY.  Add a new feature in the web-ui to
+  allow me to edit any file selected from the the "inbox".
+
+  This "strands-agent" project will be used for a workshop.  See the "workshop" folder for details. Please read the
+  content and amend it to reflect the workshop for strands-agent.  Please add more comments and workshop placeholders
+  in the python programs.
+
+  Ask me anything for any clarification if required.
+
+...
+
+● The project is complete. Here's a summary of everything created at /root/claude/wrk/strands-agent/:
+
+  ---
+  What was built
+
+  Core files
+
+  ┌──────────────────────┬────────────────────────────────────────────────────────────────────────────────────────┐
+  │         File         │                                        Purpose                                         │
+  ├──────────────────────┼────────────────────────────────────────────────────────────────────────────────────────┤
+  │ strands_agent.py     │ Amazon Strands agent — model registry, @tool closures, streaming callback, run_agent() │
+  ├──────────────────────┼────────────────────────────────────────────────────────────────────────────────────────┤
+  │ web_app.py           │ Flask web UI — identical REST API surface as ADK version, plus inbox file editing      │
+  ├──────────────────────┼────────────────────────────────────────────────────────────────────────────────────────┤
+  │ templates/index.html │ Browser UI with ✏ Edit / 💾 Save / ✕ Cancel workflow for inbox files                   │
+  ├──────────────────────┼────────────────────────────────────────────────────────────────────────────────────────┤
+  │ pyproject.toml       │ Depends on strands-agents[anthropic,openai,litellm]                                    │
+  ├──────────────────────┼────────────────────────────────────────────────────────────────────────────────────────┤
+  │ .env.example         │ API key template                                                                       │
+  └──────────────────────┴────────────────────────────────────────────────────────────────────────────────────────┘
+
+  Key design decisions
+
+  Strands vs ADK differences (clearly commented in code):
+  - ADK: LlmAgent + InMemoryRunner.run_async() → async Event stream parsed with _format_event()
+  - Strands: Agent(model, tools, callback_handler) + synchronous agent(prompt) — no asyncio wiring needed
+  - Tools are closures wrapped with strands_tool() instead of plain functions — captures inbox, outbox, and log_callback
+  - Each tool embeds its own [tool_use] / [result] logging via log_callback (no framework event parsing)
+
+  New feature — inbox file editor:
+  - PUT /api/file/inbox/<path> endpoint in web_app.py
+  - ✏ Edit button appears in the viewer toolbar for inbox files only
+  - Yellow edit bar with 💾 Save and ✕ Cancel — discards edits with confirmation if switching files
+
+  Workshop materials (6 exercises updated for Strands)
+
+  All 6 exercises were rewritten to reflect Strands SDK concepts, the @tool decorator pattern, the closure-based tool
+  factory, the callback_handler, and the new in-browser editor feature. Workshop placeholders and # WORKSHOP comments
+  are present throughout both Python files.
+

@@ -1,0 +1,34 @@
+# Pre-requisites for Agent SDK and Flask
+werkzeug==3.1.8
+mcp==1.27.1
+
+# ── Agent SDK ─────────────────────────────────────────────────────────────────
+# Bundles the Claude Code CLI — no separate Node.js install required.
+# https://github.com/anthropics/claude-code-sdk-python
+claude-agent-sdk>=0.0.25
+
+# ── Async runtime ─────────────────────────────────────────────────────────────
+anyio>=4.0.0
+
+# ── Web application ───────────────────────────────────────────────────────────
+flask>=3.0.0
+
+# ── Workshop Exercise 3 — Uncomment when adding HTTP fetch tool ───────────────
+# httpx>=0.27.0
+
+# ── Anthropic SDK — used directly for OpenRouter provider ─────────────────────
+anthropic>=0.30.0
+
+anyio==4.13.0
+blinker==1.9.0
+claude-agent-sdk==0.1.80
+click==8.3.3
+flask==3.1.3
+itsdangerous==2.2.0
+jinja2==3.1.6
+markupsafe==3.0.3
+
+# uv pip install --upgrade --force-reinstall flask
+# uv pip install --upgrade --force-reinstall claude-agent-sdk
+
+

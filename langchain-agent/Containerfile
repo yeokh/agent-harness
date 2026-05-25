@@ -1,0 +1,38 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# LangChain Agent Web UI container image
+#
+# Build:
+#   podman build -t langchain-agent:latest -f Containerfile .
+#
+# Run:
+#   podman run --rm -it -p 8080:8080 \
+#     -e ANTHROPIC_API_KEY=sk-ant-xxx \
+#     -e DEFAULT_MODEL=anthropic:claude-sonnet-4-6 \
+#     -v ./inbox:/app/inbox:rw,z   \
+#     -v ./outbox:/app/outbox:rw,z \
+#     localhost/langchain-agent:latest
+#
+# Optional env overrides:
+#   OPENROUTER_API_KEY
+#   HOST              (default: 0.0.0.0)
+#   PORT              (default: 8080)
+#   INBOX_DIR         (default: ./inbox)
+#   OUTBOX_DIR        (default: ./outbox)
+# ─────────────────────────────────────────────────────────────────────────────
+
+FROM python:3.12-slim
+
+WORKDIR /app
+
+# Install Python dependencies first (layer-cached)
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy web app and UI template
+COPY web_app.py .
+COPY templates ./templates
+
+# Runtime directories (can be volume-mounted)
+RUN mkdir -p inbox outbox
+
+ENTRYPOINT ["python", "web_app.py"]

@@ -1,0 +1,84 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Claude Agent Harness — Containerfile
+#
+# Base image : Red Hat Universal Base Image 9 — Python 3.12
+#              registry.access.redhat.com/ubi9/python-312
+#              Freely redistributable, CVE-tracked by Red Hat.
+#
+# What runs  : Flask web application (web_app.py) on port 8080.
+#              The agent (agent_harness.py) is triggered via the web UI.
+#
+# Build      : podman build -t claude-agent -f Containerfile .
+# Run        : podman run --rm -p 8080:8080 \
+#                -e ANTHROPIC_API_KEY="$ANTHROPIC_API_KEY" \
+#                -v ./inbox:/app/inbox \
+#                -v ./outbox:/app/outbox \
+#                claude-agent
+#
+# Volumes:
+#   /app/inbox   — upload instruction.md and payload files here
+#   /app/outbox  — agent writes results here
+#
+# Required env var:
+#   ANTHROPIC_API_KEY
+#
+# Optional env vars (with defaults):
+#   CLAUDE_MODEL   = claude-opus-4-5
+#   MAX_TURNS      = 50
+#   INBOX_DIR      = /app/inbox
+#   OUTBOX_DIR     = /app/outbox
+#   PORT           = 8080
+# ─────────────────────────────────────────────────────────────────────────────
+
+FROM registry.access.redhat.com/ubi9/python-312
+
+# ── System updates ─────────────────────────────────────────────────────────────
+# microdnf is the package manager on UBI images.
+# ca-certificates are pre-installed; we only run security updates.
+USER root
+RUN microdnf update -y && microdnf clean all
+
+# ── App layout ─────────────────────────────────────────────────────────────────
+# /app is owned by UID 1001 (default UBI non-root user) with group-writable
+# permissions — the standard OpenShift-compatible pattern.
+WORKDIR /app
+RUN chown 1001:0 /app && chmod g=u /app
+
+# ── Python dependencies ────────────────────────────────────────────────────────
+# Copy requirements first for layer caching.
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# ── Application code ──────────────────────────────────────────────────────────
+COPY agent_harness.py .
+COPY web_app.py       .
+COPY templates/       ./templates/
+
+# ── Volume mount points ───────────────────────────────────────────────────────
+# These directories are created here so the non-root user can write to them
+# even when no external volume is mounted.
+RUN mkdir -p /app/inbox /app/outbox \
+    && chown -R 1001:0 /app/inbox /app/outbox \
+    && chmod -R g=u /app/inbox /app/outbox
+
+VOLUME ["/app/inbox", "/app/outbox"]
+
+# ── Default environment ────────────────────────────────────────────────────────
+ENV CLAUDE_MODEL="claude-opus-4-5" \
+    MAX_TURNS="50"                 \
+    INBOX_DIR="/app/inbox"         \
+    OUTBOX_DIR="/app/outbox"       \
+    PORT="8080"                    \
+    HOST="0.0.0.0"
+
+# ── Unprivileged user ──────────────────────────────────────────────────────────
+# UID 1001 is the default non-root user in all Red Hat UBI images.
+# No useradd required — it already exists in the base image.
+USER 1001
+
+# ── Expose web UI port ─────────────────────────────────────────────────────────
+# Port 8080 is the OpenShift/Kubernetes-friendly non-privileged HTTP port.
+EXPOSE 8080
+
+# ── Entry point ────────────────────────────────────────────────────────────────
+CMD ["python", "/app/web_app.py"]

@@ -1,0 +1,14 @@
+[project]
+name = "smolagents-workshop"
+version = "0.1.0"
+description = "Web-based file-processing agent powered by HuggingFace Smolagents"
+requires-python = ">=3.11"
+dependencies = [
+    "flask>=3.0",
+    "smolagents[litellm]>=1.15",   # [litellm] enables LiteLLMModel for all providers
+    "anthropic>=0.40",              # Anthropic SDK (used by LiteLLM + optional guardrail)
+    "openai>=1.0",                  # OpenAI SDK (used by LiteLLM + optional guardrail)
+]
+
+[tool.uv]
+package = false   # workshop harness — install deps only, don't build as a package

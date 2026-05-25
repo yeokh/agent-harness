@@ -1,0 +1,71 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# pi-cli-agent web UI container image
+# Build:  podman build -t pi-cli-agent:v1 -f Containerfile .
+# Run:    podman run --rm -it -p 8080:8080 \
+#           -e ANTHROPIC_API_KEY=sk-ant-... \
+#           pi-cli-agent:v1
+# Mount volumes to persist data across runs:
+#   -v ./inbox:/app/inbox -v ./outbox:/app/outbox
+# ─────────────────────────────────────────────────────────────────────────────
+
+FROM registry.redhat.io/ubi9/python-312-minimal
+
+# ── 1. System dependencies ────────────────────────────────────────────────────
+RUN microdnf install -y --nodocs \
+    curl \
+    ca-certificates \
+    gzip \
+  && microdnf clean all
+
+RUN curl -L -o /tmp/rg.tar.gz \
+    https://github.com/BurntSushi/ripgrep/releases/download/14.1.0/ripgrep-14.1.0-x86_64-unknown-linux-musl.tar.gz \
+  && tar -xzf /tmp/rg.tar.gz -C /tmp \
+  && cp /tmp/ripgrep-14.1.0-x86_64-unknown-linux-musl/rg /usr/local/bin/rg \
+  && chmod +x /usr/local/bin/rg \
+  && rm -rf /tmp/rg*
+
+RUN curl -L -o /tmp/fd.tar.gz \
+    https://github.com/sharkdp/fd/releases/download/v10.2.0/fd-v10.2.0-x86_64-unknown-linux-musl.tar.gz \
+  && tar -xzf /tmp/fd.tar.gz -C /tmp \
+  && cp /tmp/fd-v10.2.0-x86_64-unknown-linux-musl/fd /usr/local/bin/fd \
+  && chmod +x /usr/local/bin/fd \
+  && rm -rf /tmp/fd*
+
+# ── 2. Node.js 20 (required by pi CLI) ───────────────────────────────────────
+RUN curl -fsSL https://rpm.nodesource.com/setup_20.x | bash - \
+  && microdnf install -y --nodocs nodejs \
+  && microdnf clean all
+
+# ── 3. Pi coding agent CLI ────────────────────────────────────────────────────
+RUN npm install -g @earendil-works/pi-coding-agent \
+  && npm cache clean --force
+
+# ── 4. Python application ─────────────────────────────────────────────────────
+WORKDIR /app
+
+COPY pyproject.toml .
+RUN pip install --no-cache-dir flask
+
+COPY web_app.py .
+COPY templates/ templates/
+
+# Copy sample inbox files — mount a host volume to override at runtime
+COPY inbox/ inbox/
+
+RUN mkdir -p outbox && chmod 777 outbox
+
+# ── 5. Non-root user ──────────────────────────────────────────────────────────
+RUN useradd -m -u 1001 appuser \
+  && chown -R appuser:appuser /app
+USER 1001
+
+# ── 6. Environment ────────────────────────────────────────────────────────────
+ENV INBOX_DIR=/app/inbox \
+    OUTBOX_DIR=/app/outbox \
+    PORT=8080 \
+    HOST=0.0.0.0
+
+EXPOSE 8080
+
+# ── 7. Default command ────────────────────────────────────────────────────────
+CMD ["python", "web_app.py"]

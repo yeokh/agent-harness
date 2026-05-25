@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Claude Agent Harness</title>
+  <style>
+    /* ── Reset & Variables ──────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:           #f1f5f9;
+      --surface:      #ffffff;
+      --surface2:     #f8fafc;
+      --border:       #e2e8f0;
+      --primary:      #6366f1;
+      --primary-dark: #4f46e5;
+      --success:      #22c55e;
+      --error:        #ef4444;
+      --warning:      #f59e0b;
+      --text:         #1e293b;
+      --text-muted:   #64748b;
+      --term-bg:      #0f172a;
+      --term-text:    #94a3b8;
+      --term-info:    #60a5fa;
+      --term-warn:    #fbbf24;
+      --term-err:     #f87171;
+      --term-tool:    #34d399;
+      --radius:       8px;
+      --shadow:       0 1px 3px rgba(0,0,0,.1), 0 1px 2px rgba(0,0,0,.06);
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 14px;
+      color: var(--text);
+      background: var(--bg);
+      height: 100vh;
+      display: grid;
+      grid-template-rows: 56px 1fr 320px;
+      overflow: hidden;
+    }
+
+    /* ── Header ─────────────────────────────────────────────────────────── */
+    header {
+      background: var(--primary);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 0 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.2);
+      z-index: 10;
+    }
+    header h1 { font-size: 16px; font-weight: 600; letter-spacing: .3px; }
+    header .badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(255,255,255,.15);
+      padding: 3px 10px; border-radius: 20px;
+      font-size: 12px; font-weight: 500;
+    }
+    header .badge .dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--text-muted);
+      transition: background .3s;
+    }
+    header .badge .dot.idle     { background: #94a3b8; }
+    header .badge .dot.running  { background: var(--warning); animation: pulse 1s infinite; }
+    header .badge .dot.completed{ background: var(--success); }
+    header .badge .dot.error    { background: var(--error); }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+    header .spacer { flex: 1; }
+    header a {
+      color: rgba(255,255,255,.8);
+      text-decoration: none; font-size: 12px;
+    }
+    header a:hover { color: #fff; }
+
+    /* ── Main content area ───────────────────────────────────────────────── */
+    .main {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      overflow: hidden;
+    }
+
+    /* ── Sidebar ─────────────────────────────────────────────────────────── */
+    .sidebar {
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .sidebar-section { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-height: 0; }
+    .sidebar-section + .sidebar-section { border-top: 1px solid var(--border); }
+
+    .sidebar-header {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 14px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .8px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      background: var(--surface2);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .sidebar-header .count {
+      margin-left: auto;
+      background: var(--border);
+      color: var(--text-muted);
+      font-size: 11px;
+      padding: 1px 6px;
+      border-radius: 10px;
+    }
+
+    .file-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 4px 0;
+    }
+
+    .file-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      cursor: pointer;
+      transition: background .15s;
+      user-select: none;
+    }
+    .file-item:hover   { background: var(--bg); }
+    .file-item.active  { background: #ede9fe; color: var(--primary-dark); }
+    .file-item .icon   { font-size: 13px; flex-shrink: 0; }
+    .file-item .fname  {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 13px;
+    }
+    .file-item .del-btn {
+      flex-shrink: 0;
+      visibility: hidden;
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--error);
+      font-size: 14px;
+      padding: 0 2px;
+      line-height: 1;
+    }
+    .file-item:hover .del-btn { visibility: visible; }
+
+    .file-empty {
+      padding: 14px;
+      font-size: 12px;
+      color: var(--text-muted);
+      font-style: italic;
+    }
+
+    .sidebar-actions {
+      padding: 8px 12px;
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    /* ── File Viewer ─────────────────────────────────────────────────────── */
+    .viewer {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background: var(--surface);
+    }
+
+    .viewer-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 16px;
+      background: var(--surface2);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .viewer-header .file-label {
+      font-weight: 600;
+      font-size: 13px;
+      flex: 1;
+    }
+    .viewer-header .file-meta {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .viewer-content {
+      flex: 1;
+      overflow: auto;
+      padding: 16px;
+    }
+    .viewer-content pre {
+      font-family: "JetBrains Mono", "Fira Code", "Cascadia Code", monospace;
+      font-size: 12.5px;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      word-break: break-word;
+      color: var(--text);
+    }
+    .viewer-placeholder {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      gap: 12px;
+      color: var(--text-muted);
+    }
+    .viewer-placeholder .icon-large { font-size: 48px; opacity: .4; }
+    .viewer-placeholder p { font-size: 13px; }
+
+    /* ── Bottom Panel ────────────────────────────────────────────────────── */
+    .bottom {
+      border-top: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background: var(--surface);
+    }
+
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 14px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface2);
+      flex-shrink: 0;
+    }
+    .controls .status-text {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-left: 4px;
+    }
+    .controls .spacer { flex: 1; }
+    .controls .cost {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-family: monospace;
+    }
+
+    /* ── Buttons ─────────────────────────────────────────────────────────── */
+    .btn {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 6px 12px;
+      border-radius: var(--radius);
+      border: 1px solid transparent;
+      font-size: 13px; font-weight: 500;
+      cursor: pointer;
+      transition: all .15s;
+      white-space: nowrap;
+    }
+    .btn:disabled { opacity: .45; cursor: not-allowed; }
+
+    .btn-primary {
+      background: var(--primary);
+      color: #fff;
+      border-color: var(--primary-dark);
+    }
+    .btn-primary:not(:disabled):hover { background: var(--primary-dark); }
+
+    .btn-outline {
+      background: var(--surface);
+      color: var(--text);
+      border-color: var(--border);
+    }
+    .btn-outline:not(:disabled):hover { background: var(--bg); }
+
+    .btn-danger {
+      background: var(--surface);
+      color: var(--error);
+      border-color: #fecaca;
+    }
+    .btn-danger:not(:disabled):hover { background: #fef2f2; }
+
+    .btn-sm {
+      padding: 4px 10px;
+      font-size: 12px;
+    }
+
+    /* ── Drop Zone ───────────────────────────────────────────────────────── */
+    .drop-zone {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+      padding: 8px 12px;
+      text-align: center;
+      cursor: pointer;
+      font-size: 12px;
+      color: var(--text-muted);
+      transition: all .2s;
+    }
+    .drop-zone:hover, .drop-zone.dragover {
+      border-color: var(--primary);
+      background: #ede9fe;
+      color: var(--primary);
+    }
+    #fileInput { display: none; }
+
+    /* ── Terminal Log ─────────────────────────────────────────────────────── */
+    .terminal {
+      flex: 1;
+      background: var(--term-bg);
+      overflow-y: auto;
+      padding: 8px 12px;
+      font-family: "JetBrains Mono", "Fira Code", monospace;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+    .terminal .log-line { display: block; padding: 1px 0; }
+    .terminal .log-line.info   { color: var(--term-info); }
+    .terminal .log-line.warn   { color: var(--term-warn); }
+    .terminal .log-line.error  { color: var(--term-err); }
+    .terminal .log-line.tool   { color: var(--term-tool); }
+    .terminal .log-line.assist { color: #e2e8f0; }
+    .terminal .log-line.meta   { color: var(--term-text); opacity: .6; }
+    .terminal .log-empty { color: var(--term-text); opacity: .5; font-style: italic; }
+
+    /* ── Toast ───────────────────────────────────────────────────────────── */
+    #toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: #1e293b;
+      color: #f1f5f9;
+      padding: 10px 16px;
+      border-radius: var(--radius);
+      font-size: 13px;
+      opacity: 0;
+      transition: opacity .2s;
+      pointer-events: none;
+      z-index: 999;
+      max-width: 320px;
+    }
+    #toast.show { opacity: 1; }
+    #toast.error { background: #7f1d1d; }
+  </style>
+</head>
+<body>
+
+<!-- ── Header ─────────────────────────────────────────────────────────────── -->
+<header>
+  <span style="font-size:20px">🤖</span>
+  <h1>Claude Agent Harness</h1>
+  <div class="badge">
+    <span class="dot idle" id="statusDot"></span>
+    <span id="statusLabel">idle</span>
+  </div>
+  <div class="spacer"></div>
+  <a href="Quickstart.md" target="_blank">Quickstart</a>
+  &nbsp;·&nbsp;
+  <a href="README.md" target="_blank">Docs</a>
+</header>
+
+<!-- ── Main ──────────────────────────────────────────────────────────────── -->
+<div class="main">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+
+    <!-- Inbox section -->
+    <div class="sidebar-section">
+      <div class="sidebar-header">
+        📥 Inbox
+        <span class="count" id="inboxCount">0</span>
+      </div>
+      <div class="file-list" id="inboxList">
+        <div class="file-empty">No files yet</div>
+      </div>
+      <div class="sidebar-actions">
+        <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+          + Upload file
+        </div>
+        <input type="file" id="fileInput" multiple />
+        <button class="btn btn-danger btn-sm" style="width:100%;margin-top:6px" onclick="clearInbox()">
+          🗑 Clear Inbox
+        </button>
+      </div>
+    </div>
+
+    <!-- Outbox section -->
+    <div class="sidebar-section">
+      <div class="sidebar-header">
+        📤 Outbox
+        <span class="count" id="outboxCount">0</span>
+      </div>
+      <div class="file-list" id="outboxList">
+        <div class="file-empty">No output yet</div>
+      </div>
+      <div class="sidebar-actions">
+        <button class="btn btn-danger btn-sm" style="width:100%" onclick="clearOutbox()">
+          🗑 Clear Outbox
+        </button>
+      </div>
+    </div>
+
+  </aside>
+
+  <!-- File viewer -->
+  <div class="viewer">
+    <div class="viewer-header">
+      <span class="file-label" id="viewerTitle">No file selected</span>
+      <span class="file-meta" id="viewerMeta"></span>
+    </div>
+    <div class="viewer-content" id="viewerContent">
+      <div class="viewer-placeholder">
+        <div class="icon-large">📄</div>
+        <p>Select a file from the inbox or outbox to view its contents.</p>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── Bottom Panel ───────────────────────────────────────────────────────── -->
+<div class="bottom">
+
+  <!-- Controls bar -->
+  <div class="controls">
+    <button class="btn btn-primary" id="runBtn" onclick="runAgent()">
+      ▶ Run Agent
+    </button>
+    <button class="btn btn-outline btn-sm" id="resetBtn" onclick="resetAgent()" style="display:none">
+      ⟳ Reset
+    </button>
+    <span class="status-text" id="statusText">Upload instruction.md to get started</span>
+    <div class="spacer"></div>
+    <label style="font-size:12px;color:var(--text-muted);display:flex;align-items:center;gap:6px">
+      🔌
+      <select id="providerSelect" onchange="setProvider(this.value)"
+              style="border:1px solid var(--border);border-radius:6px;padding:3px 6px;font-size:12px;background:var(--surface)">
+        <option value="anthropic">Anthropic</option>
+        <option value="openrouter">OpenRouter</option>
+      </select>
+    </label>
+    <label style="font-size:12px;color:var(--text-muted);display:flex;align-items:center;gap:6px">
+      🧠
+      <select id="modelSelect" onchange="setModel(this.value)"
+              style="border:1px solid var(--border);border-radius:6px;padding:3px 6px;font-size:12px;background:var(--surface);max-width:260px">
+        <option value="">Loading models…</option>
+      </select>
+    </label>
+    <button class="btn btn-outline btn-sm" onclick="clearLog()">Clear log</button>
+  </div>
+
+  <!-- Terminal log -->
+  <div class="terminal" id="terminal">
+    <span class="log-empty">Agent log will appear here when a run starts...</span>
+  </div>
+
+</div>
+
+<!-- Toast notification -->
+<div id="toast"></div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════════════
+   Claude Agent Harness — UI JavaScript
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+// ── State ──────────────────────────────────────────────────────────────────
+let agentStatus   = 'idle';
+let logOffset     = 0;
+let eventSource   = null;
+let activeFile    = null;  // { folder, name }
+let pollTimer     = null;
+
+// ── Init ───────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  refreshInbox();
+  refreshOutbox();
+  syncStatus();
+  syncProvider();
+  setInterval(syncStatus, 5000);
+  initDropZone();
+});
+
+// ── Provider & Model selection ─────────────────────────────────────────────
+async function syncProvider() {
+  try {
+    const res  = await fetch('/api/provider');
+    const data = await res.json();
+    const sel  = document.getElementById('providerSelect');
+    if (sel) sel.value = data.provider;
+    await loadModels(data.provider);
+  } catch (e) {
+    console.error('syncProvider failed:', e);
+  }
+}
+
+async function setProvider(provider) {
+  const res  = await fetch('/api/provider', {
+    method:  'POST',
+    headers: {'Content-Type': 'application/json'},
+    body:    JSON.stringify({provider}),
+  });
+  const data = await res.json();
+  if (data.error) { toast(data.error, true); return; }
+  toast(`Provider: ${data.provider}`);
+  await loadModels(data.provider);
+}
+
+async function loadModels(provider) {
+  const sel = document.getElementById('modelSelect');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">Loading…</option>';
+  sel.disabled  = true;
+
+  try {
+    const res  = await fetch(`/api/models?provider=${encodeURIComponent(provider)}`);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+
+    sel.innerHTML = data.models.map(m => {
+      const label = m.name !== m.id ? `${esc(m.name)} — ${esc(m.id)}` : esc(m.id);
+      return `<option value="${esc(m.id)}">${label}</option>`;
+    }).join('');
+    sel.disabled = false;
+
+    // Restore saved model, or default to first
+    const modelRes  = await fetch('/api/model');
+    const modelData = await modelRes.json();
+    if (modelData.model) sel.value = modelData.model;
+
+    if (!sel.value && data.models.length > 0) {
+      sel.value = data.models[0].id;
+      await setModel(sel.value);
+    }
+  } catch (e) {
+    sel.innerHTML = `<option value="">Error loading models</option>`;
+    sel.disabled  = false;
+    toast(`Failed to load models: ${e.message}`, true);
+  }
+}
+
+async function setModel(model) {
+  const res  = await fetch('/api/model', {
+    method:  'POST',
+    headers: {'Content-Type': 'application/json'},
+    body:    JSON.stringify({model}),
+  });
+  const data = await res.json();
+  if (data.error) toast(data.error, true);
+  else toast(`Model: ${data.model}`);
+}
+
+// ── File upload ────────────────────────────────────────────────────────────
+function initDropZone() {
+  const zone  = document.getElementById('dropZone');
+  const input = document.getElementById('fileInput');
+
+  zone.addEventListener('dragover',  e => { e.preventDefault(); zone.classList.add('dragover'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+  zone.addEventListener('drop', e => {
+    e.preventDefault();
+    zone.classList.remove('dragover');
+    uploadFiles([...e.dataTransfer.files]);
+  });
+  input.addEventListener('change', () => {
+    uploadFiles([...input.files]);
+    input.value = '';
+  });
+}
+
+async function uploadFiles(files) {
+  for (const f of files) {
+    const fd = new FormData();
+    fd.append('file', f);
+    try {
+      const res  = await fetch('/api/upload', { method: 'POST', body: fd });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      toast(`Uploaded: ${data.name}`);
+    } catch (e) {
+      toast(`Upload failed: ${e.message}`, true);
+    }
+  }
+  refreshInbox();
+}
+
+// ── File listing ───────────────────────────────────────────────────────────
+async function refreshInbox() {
+  const res   = await fetch('/api/inbox');
+  const data  = await res.json();
+  renderFileList('inboxList', 'inboxCount', data.files, 'inbox');
+}
+
+async function refreshOutbox() {
+  const res   = await fetch('/api/outbox');
+  const data  = await res.json();
+  renderFileList('outboxList', 'outboxCount', data.files, 'outbox');
+}
+
+function renderFileList(listId, countId, files, folder) {
+  const list  = document.getElementById(listId);
+  const count = document.getElementById(countId);
+  count.textContent = files.length;
+
+  if (!files.length) {
+    list.innerHTML = `<div class="file-empty">No files yet</div>`;
+    return;
+  }
+
+  list.innerHTML = files.map(f => {
+    const icon     = fileIcon(f.name);
+    const isActive = activeFile && activeFile.folder === folder && activeFile.name === f.name;
+    const size     = formatSize(f.size);
+    const del      = folder === 'inbox'
+      ? `<button class="del-btn" title="Delete" onclick="deleteFile('${esc(f.name)}',event)">×</button>`
+      : '';
+    return `
+      <div class="file-item ${isActive ? 'active' : ''}"
+           onclick="viewFile('${folder}','${esc(f.name)}')">
+        <span class="icon">${icon}</span>
+        <span class="fname" title="${esc(f.name)}">${esc(f.name)}</span>
+        <span style="font-size:11px;color:var(--text-muted)">${size}</span>
+        ${del}
+      </div>`;
+  }).join('');
+}
+
+// ── File viewer ───────────────────────────────────────────────────────────
+async function viewFile(folder, name) {
+  activeFile = { folder, name };
+
+  // Update active highlight
+  refreshInbox();
+  refreshOutbox();
+
+  const title = document.getElementById('viewerTitle');
+  const meta  = document.getElementById('viewerMeta');
+  const body  = document.getElementById('viewerContent');
+
+  title.textContent = name;
+  meta.textContent  = 'Loading…';
+  body.innerHTML    = '';
+
+  const res  = await fetch(`/api/file/${folder}/${encodeURIComponent(name)}`);
+  const data = await res.json();
+
+  if (data.error) {
+    meta.textContent = 'Error';
+    body.innerHTML   = `<pre style="color:var(--error)">${esc(data.error)}</pre>`;
+    return;
+  }
+
+  meta.textContent = `${folder}/${name}`;
+  body.innerHTML   = `<pre>${esc(data.content)}</pre>`;
+}
+
+// ── File delete ───────────────────────────────────────────────────────────
+function clearViewer() {
+  activeFile = null;
+  document.getElementById('viewerTitle').textContent = 'No file selected';
+  document.getElementById('viewerMeta').textContent  = '';
+  document.getElementById('viewerContent').innerHTML = `
+    <div class="viewer-placeholder">
+      <div class="icon-large">📄</div>
+      <p>Select a file from the inbox or outbox to view its contents.</p>
+    </div>`;
+}
+
+async function deleteFile(name, event) {
+  event.stopPropagation();
+  if (!confirm(`Delete "${name}" from inbox?`)) return;
+  await fetch(`/api/inbox/${encodeURIComponent(name)}`, { method: 'DELETE' });
+  if (activeFile && activeFile.name === name) clearViewer();
+  toast(`Deleted: ${name}`);
+  refreshInbox();
+}
+
+async function clearInbox() {
+  if (!confirm('Clear all files from the inbox?')) return;
+  await fetch('/api/inbox', { method: 'DELETE' });
+  if (activeFile && activeFile.folder === 'inbox') clearViewer();
+  toast('Inbox cleared');
+  refreshInbox();
+}
+
+async function clearOutbox() {
+  if (!confirm('Clear all files from the outbox?')) return;
+  await fetch('/api/outbox', { method: 'DELETE' });
+  if (activeFile && activeFile.folder === 'outbox') clearViewer();
+  toast('Outbox cleared');
+  refreshOutbox();
+}
+
+// ── Agent control ─────────────────────────────────────────────────────────
+async function runAgent() {
+  const res  = await fetch('/api/agent/run', { method: 'POST' });
+  const data = await res.json();
+  if (data.error) { toast(data.error, true); return; }
+
+  logOffset = 0;
+  clearLog(false);
+  startLogStream();
+  syncStatus();
+}
+
+async function resetAgent() {
+  const res  = await fetch('/api/agent/reset', { method: 'POST' });
+  const data = await res.json();
+  if (data.error) { toast(data.error, true); return; }
+  syncStatus();
+  toast('Agent reset');
+}
+
+function clearLog(showEmpty = true) {
+  const t = document.getElementById('terminal');
+  t.innerHTML = showEmpty
+    ? '<span class="log-empty">Agent log will appear here when a run starts...</span>'
+    : '';
+}
+
+// ── SSE log stream ────────────────────────────────────────────────────────
+function startLogStream() {
+  if (eventSource) { eventSource.close(); }
+
+  // Clear any stale placeholder
+  const t = document.getElementById('terminal');
+  t.innerHTML = '';
+
+  eventSource = new EventSource(`/api/agent/logs?offset=${logOffset}`);
+
+  eventSource.onmessage = e => {
+    const data = JSON.parse(e.data);
+
+    if (data.done) {
+      eventSource.close();
+      eventSource = null;
+      setStatus(data.status);
+      refreshOutbox();
+      return;
+    }
+
+    appendLog(data.msg);
+    logOffset++;
+  };
+
+  eventSource.onerror = () => {
+    eventSource.close();
+    eventSource = null;
+    syncStatus();
+  };
+}
+
+function appendLog(msg) {
+  const t    = document.getElementById('terminal');
+  const span = document.createElement('span');
+  span.className = 'log-line ' + classifyLog(msg);
+  span.textContent = msg;
+  t.appendChild(span);
+  t.scrollTop = t.scrollHeight;
+}
+
+function classifyLog(msg) {
+  if (msg.includes('[tool_use]') || msg.includes('[tool]')) return 'tool';
+  if (msg.includes('[assistant]'))                            return 'assist';
+  if (msg.includes('[WARNING]') || msg.includes('[WARN]'))   return 'warn';
+  if (msg.includes('[ERROR]') || msg.includes('FATAL'))      return 'error';
+  if (msg.includes('[result]'))                              return 'meta';
+  return 'info';
+}
+
+// ── Status sync ───────────────────────────────────────────────────────────
+async function syncStatus() {
+  const res  = await fetch('/api/agent/status');
+  const data = await res.json();
+  setStatus(data.status);
+
+  // Re-attach stream if agent is running and we lost the EventSource
+  if (data.status === 'running' && !eventSource) {
+    logOffset = Math.max(0, data.log_count - 50);
+    startLogStream();
+  }
+}
+
+function setStatus(status) {
+  agentStatus = status;
+
+  const dot   = document.getElementById('statusDot');
+  const label = document.getElementById('statusLabel');
+  const text  = document.getElementById('statusText');
+  const runBtn= document.getElementById('runBtn');
+  const resetBtn = document.getElementById('resetBtn');
+
+  dot.className  = `dot ${status}`;
+  label.textContent = status;
+
+  const msgs = {
+    idle:      'Upload instruction.md to get started',
+    running:   'Agent is processing inbox files…',
+    completed: 'Run completed — check the outbox for results',
+    error:     'Run failed — check the log for details',
+  };
+  text.textContent = msgs[status] || status;
+
+  runBtn.disabled = (status === 'running');
+  runBtn.textContent = status === 'running' ? '⏳ Running…' : '▶ Run Agent';
+
+  resetBtn.style.display = (status === 'completed' || status === 'error') ? '' : 'none';
+}
+
+// ── Utilities ─────────────────────────────────────────────────────────────
+function esc(s) {
+  return String(s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function fileIcon(name) {
+  if (name.endsWith('.md'))  return '📝';
+  if (name.endsWith('.csv')) return '📊';
+  if (name.endsWith('.json'))return '📋';
+  if (name.endsWith('.py'))  return '🐍';
+  if (name.endsWith('.log')) return '📜';
+  if (name.endsWith('.txt')) return '📄';
+  return '📁';
+}
+
+function formatSize(bytes) {
+  if (bytes < 1024)       return `${bytes}B`;
+  if (bytes < 1024*1024)  return `${(bytes/1024).toFixed(1)}KB`;
+  return `${(bytes/(1024*1024)).toFixed(1)}MB`;
+}
+
+let _toastTimer = null;
+function toast(msg, isError = false) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className   = 'show' + (isError ? ' error' : '');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => { el.className = ''; }, 3000);
+}
+</script>
+</body>
+</html>

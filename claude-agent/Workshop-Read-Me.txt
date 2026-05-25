@@ -1,0 +1,42 @@
+Workshop Content:
+
+  Core application:
+  - agent_harness.py — importable agent module with 4 workshop placeholders (CUSTOM_TOOLS, guardrail, skill loader,
+  standalone entry point)
+  - web_app.py — Flask app with full REST API + SSE log streaming + model selection endpoint
+  - templates/index.html — single-page UI: file browser, drag-and-drop upload, log terminal, model selector
+  - requirements.txt + Containerfile (RH UBI 9 Python 3.12, port 8080) + run.sh
+
+  Sample inbox:
+  - inbox/instruction.md — working CSV analysis task
+  - inbox/sample_data.csv — employee data to analyse
+
+  Documentation:
+  - README.md — full project docs with architecture diagram and API reference
+  - Quickstart.md — 5-minute getting-started guide
+
+  Workshop (beginner + advanced + demos):
+
+  ┌────────────────────────────────────┬───────────────────────────────────────────┐
+  │                File                │                   Topic                   │
+  ├────────────────────────────────────┼───────────────────────────────────────────┤
+  │ beginner/01_explore.md             │ Trace the agentic loop                    │
+  ├────────────────────────────────────┼───────────────────────────────────────────┤
+  │ beginner/02_modify_instructions.md │ Craft effective task instructions         │
+  ├────────────────────────────────────┼───────────────────────────────────────────┤
+  │ beginner/03_add_simple_tool.md     │ Add word-count / URL fetch tool           │
+  ├────────────────────────────────────┼───────────────────────────────────────────┤
+  │ advanced/04_guardrail_agent.md     │ Claude-as-judge safety filter             │
+  ├────────────────────────────────────┼───────────────────────────────────────────┤
+  │ advanced/05_custom_skills.md       │ Dynamic skill loading                     │
+  ├────────────────────────────────────┼───────────────────────────────────────────┤
+  │ advanced/06_multi_agent.md         │ Planner + worker orchestration            │
+  ├────────────────────────────────────┼───────────────────────────────────────────┤
+  │ demos/D1_multistep_workflow.md     │ ReAct agent: Titanic CSV + ASCII charts   │
+  ├────────────────────────────────────┼───────────────────────────────────────────┤
+  │ demos/D2_zip_tool.md               │ Safe zip inspection + agent autonomy      │
+  ├────────────────────────────────────┼───────────────────────────────────────────┤
+  │ demos/D3_brain_swapping.md         │ Model selector UI + capability comparison │
+  ├────────────────────────────────────┼───────────────────────────────────────────┤
+  │ demos/D4_jailbreak_demo.md         │ Attack demo → guardrail defence           │
+  └────────────────────────────────────┴───────────────────────────────────────────┘

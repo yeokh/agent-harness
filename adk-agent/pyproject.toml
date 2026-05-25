@@ -1,0 +1,17 @@
+[project]
+name = "adk-agent"
+version = "0.1.0"
+description = "Web-based file-processing agent powered by Google ADK"
+requires-python = ">=3.11"
+dependencies = [
+    "flask>=3.0",
+    "google-adk[extensions]>=1.0",   # [extensions] includes LiteLLM for OpenAI/OpenRouter
+    "anthropic>=0.40",                # Anthropic SDK (used by LiteLLM for Claude models)
+]
+
+[project.scripts]
+adk-agent-web = "web_app:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
