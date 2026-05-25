@@ -1,4 +1,4 @@
-# Quickstart — Claude Agent Harness
+# Quickstart — Claude Agent Harness (OBSOLETE)
 
 Get from zero to a running agent in 5 minutes.
 
