@@ -22,6 +22,7 @@ Option for running containerized agents:
 ## Set your API key
 
 export ANTHROPIC_API_KEY=sk-ant-api03-...
+
 export OPENROUTER_API_KEY=sk-or-v1-...
 
 
@@ -29,8 +30,10 @@ export OPENROUTER_API_KEY=sk-or-v1-...
 
 ## Clone and initialize the agent project
 
-git clone https://github.com/yeokh/agent-harness 
+git clone https://github.com/yeokh/agent-harness
+
 cd agent-harness 
+
 cd my-agent
 
 Create or modify `inbox/instruction.md` (a sample already exists in this repo):
@@ -49,9 +52,7 @@ The agent can list and read these files using its built-in tools.
 
 ## Initialize and run the agent
 
-uv init 
-uv sync 
-source .venv/bin/activate 
+uv init ; uv sync ; source .venv/bin/activate 
 
 python web_app.py
 
