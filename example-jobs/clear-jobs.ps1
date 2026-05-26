@@ -1,1 +1,0 @@
-Get-ChildItem -Path "C:\DevWorks\agent-job\*\outbox" -File | Remove-Item -Force
