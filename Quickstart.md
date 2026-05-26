@@ -1,4 +1,4 @@
-# Quickstart — Claude Agent Harness (OBSOLETE)
+# Quickstart — Claude Agent Harness
 
 Get from zero to a running agent in 5 minutes.  All the agents are developed using Python and follow the same general structure and format.
 You can use the same steps below to test any of the agent, using the sample jobs provided.
