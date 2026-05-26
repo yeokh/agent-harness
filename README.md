@@ -31,7 +31,7 @@ Perfect for:
 | [**pi-cli-agent**](pi-cli-agent/) | Pi CLI | Anthropic | ✓ Reference |
 | [**strands-agent**](strands-agent/) | Strands | Anthropic | ✓ Reference |
 | [**smolagents**](smolagents/) | Hugging Face Agents | Anthropic, OpenAI | ✓ Reference |
-| [**deep-agent**](deep-agent/) | DeepSeek | Multiple | ✓ Reference |
+| [**deep-agent**](deep-agent/) | LangChain Deep Agents | Anthropic, OpenRouter | ✓ Reference |
 
 ### **Example Jobs**
 
