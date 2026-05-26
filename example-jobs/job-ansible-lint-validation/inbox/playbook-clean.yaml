@@ -1,0 +1,137 @@
+---
+- name: Clean and well-structured playbook
+  hosts: webservers
+  gather_facts: true
+
+  vars:
+    app_port: 8080
+    app_user: appuser
+    app_group: appgroup
+
+  handlers:
+    - name: Restart nginx service
+      systemd:
+        name: nginx
+        state: restarted
+        daemon_reload: true
+
+    - name: Reload nginx configuration
+      systemd:
+        name: nginx
+        state: reloaded
+
+  pre_tasks:
+    - name: Validate required variables
+      assert:
+        that:
+          - app_port is defined
+          - app_user is defined
+        fail_msg: "Required variables not defined"
+
+  tasks:
+    - name: Install required packages
+      package:
+        name:
+          - nginx
+          - python3
+          - curl
+        state: present
+
+    - name: Create application user
+      user:
+        name: "{{ app_user }}"
+        group: "{{ app_group }}"
+        home: /home/appuser
+        shell: /bin/bash
+        createhome: true
+        state: present
+
+    - name: Create application directories
+      file:
+        path: "{{ item }}"
+        state: directory
+        owner: "{{ app_user }}"
+        group: "{{ app_group }}"
+        mode: '0755'
+      loop:
+        - /opt/myapp
+        - /opt/myapp/logs
+        - /opt/myapp/data
+
+    - name: Copy application files
+      copy:
+        src: myapp.tar.gz
+        dest: /opt/myapp/
+        owner: "{{ app_user }}"
+        group: "{{ app_group }}"
+        mode: '0755'
+
+    - name: Extract application files
+      unarchive:
+        src: /opt/myapp/myapp.tar.gz
+        dest: /opt/myapp/
+        owner: "{{ app_user }}"
+        group: "{{ app_group }}"
+        remote_src: true
+
+    - name: Install Python dependencies
+      pip:
+        requirements: /opt/myapp/requirements.txt
+        virtualenv: /opt/myapp/venv
+
+    - name: Configure application settings
+      template:
+        src: config.j2
+        dest: /opt/myapp/config.ini
+        owner: "{{ app_user }}"
+        group: "{{ app_group }}"
+        mode: '0640'
+
+    - name: Enable and start nginx service
+      systemd:
+        name: nginx
+        enabled: true
+        state: started
+
+    - name: Configure nginx virtual host
+      template:
+        src: nginx.conf.j2
+        dest: /etc/nginx/sites-available/myapp
+        owner: root
+        group: root
+        mode: '0644'
+      notify: Reload nginx configuration
+
+    - name: Enable nginx virtual host
+      file:
+        src: /etc/nginx/sites-available/myapp
+        dest: /etc/nginx/sites-enabled/myapp
+        state: link
+      notify: Restart nginx service
+
+    - name: Create systemd service for application
+      template:
+        src: myapp.service.j2
+        dest: /etc/systemd/system/myapp.service
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: Start application service
+      systemd:
+        name: myapp
+        enabled: true
+        state: started
+        daemon_reload: true
+
+  post_tasks:
+    - name: Verify application is running
+      uri:
+        url: "http://localhost:{{ app_port }}/health"
+        status_code: 200
+      retries: 3
+      delay: 5
+
+    - name: Display deployment summary
+      debug:
+        msg: "Application successfully deployed on {{ ansible_hostname }}"
