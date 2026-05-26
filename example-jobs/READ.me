@@ -4,3 +4,34 @@ inbox - this folder container the files to be processes.
 outbox - this folder container the output and log for the job.
 
 The agent has to read the instruction and complete the jobs found in this folder.
+
+
+---
+Take a look at C:\DevWorks\agent-harness\example-jobs\job1-code-scan.  Can you suggest a new similar job but this time add a skill to use a more deterministic tool, ansible-lint, to scan the codes.  Separate the task instruction and tool skill into 2 separate files.  For reference, see C:\DevWorks\agent-harness\example-jobs\job-product-lifecycle-advisor\agent
+
+Perfect! I can see `job1-code-scan` uses AI to manually detect security vulnerabilities. Here's my recommendation for a new job that uses **ansible-lint** as a more deterministic, automated scanning tool:
+
+## 📋 Proposed New Job: `job-ansible-lint-validation`
+
+### **Purpose & Comparison**
+
+| Aspect | job1-code-scan | job-ansible-lint-validation |
+|--------|----------------|---------------------------|
+| **Tool Type** | AI-based (LLM analysis) | Deterministic (ansible-lint) |
+| **Focus** | Security vulnerabilities | Best practices + style + security |
+| **Output** | Manual judgment, JSON | Structured YAML/JSON lint results |
+| **Speed** | Slower (LLM processing) | Fast (automated) |
+| **Consistency** | AI may vary | Deterministic, repeatable |
+| **Coverage** | Custom rules (limited) | 100+ built-in rules |
+
+---
+### **Key Advantages Over job1-code-scan**
+
+✅ **Deterministic** - Same playbook always produces same results  
+✅ **Fast** - No LLM processing needed  
+✅ **Comprehensive** - 100+ rules vs manual LLM rules  
+✅ **Standardized** - Official Ansible recommendations  
+✅ **Automatable** - Easy to integrate into CI/CD  
+✅ **Verifiable** - Clear rule IDs and documentation  
+✅ **Practical** - Immediate actionable fixes  
+

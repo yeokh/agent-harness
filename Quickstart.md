@@ -29,9 +29,9 @@ export OPENROUTER_API_KEY=sk-or-v1-...
 
 ## Clone and initialize the agent project
 
-git clone https://github.com/yeokh/agent-harness
-cd agent-harness
-cd <agent-project>
+git clone https://github.com/yeokh/agent-harness 
+cd agent-harness 
+cd my-agent
 
 Create or modify `inbox/instruction.md` (a sample already exists in this repo):
 The instruction file tells the agent what to do. It is loaded as the agent's task prompt before each run.
@@ -41,7 +41,7 @@ The instruction file tells the agent what to do. It is loaded as the agent's tas
 
 ## (Optional) Add payload files
 
-Drop any files the agent should process into the `inbox/` folder:
+Drop any files the agent should process into the `inbox/` folder: 
 The agent can list and read these files using its built-in tools.
 
 
@@ -49,8 +49,8 @@ The agent can list and read these files using its built-in tools.
 
 ## Initialize and run the agent
 
-uv init
-uv sync
+uv init 
+uv sync 
 source .venv/bin/activate 
 
 python web_app.py
