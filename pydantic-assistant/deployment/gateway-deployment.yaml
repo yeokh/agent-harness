@@ -1,0 +1,108 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pydantic-gateway
+  labels:
+    app: pydantic-gateway
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pydantic-gateway
+  template:
+    metadata:
+      labels:
+        app: pydantic-gateway
+    spec:
+      serviceAccountName: pydantic-gateway
+      containers:
+        # oauth-proxy — the only network-exposed container. Authenticates
+        # users once via the cluster's OpenShift OAuth server, then forwards
+        # everything to the nginx sidecar below.
+        - name: oauth-proxy
+          image: registry.redhat.io/openshift4/ose-oauth-proxy:latest
+          ports:
+            - containerPort: 4443
+              protocol: TCP
+          args:
+            - --https-address=:4443
+            - --provider=openshift
+            - --openshift-service-account=pydantic-gateway
+            - --upstream=http://localhost:8080
+            - --tls-cert=/etc/tls/private/tls.crt
+            - --tls-key=/etc/tls/private/tls.key
+            - --cookie-secret-file=/etc/proxy/secrets/session_secret
+            # Uncomment to restrict to users who can "get pods" here:
+            # - --openshift-sar={"resource":"pods","verb":"get"}
+          volumeMounts:
+            - name: proxy-tls
+              mountPath: /etc/tls/private
+            - name: proxy-secret
+              mountPath: /etc/proxy/secrets
+          readinessProbe:
+            tcpSocket:
+              port: 4443
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: 4443
+            initialDelaySeconds: 15
+            periodSeconds: 30
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+
+        # nginx — dynamically resolves "/<assistant-name>/..." to that
+        # assistant's own Service by in-cluster DNS, at request time, and
+        # strips the "/<assistant-name>" prefix before forwarding. New
+        # assistants work immediately; this container never needs updating.
+        - name: nginx
+          image: docker.io/nginxinc/nginx-unprivileged:1.27-alpine
+          ports:
+            - containerPort: 8080
+              protocol: TCP
+          env:
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            # OpenShift's in-cluster CoreDNS Service. For vanilla Kubernetes,
+            # override to kube-dns.kube-system.svc.cluster.local.
+            - name: NGINX_RESOLVER
+              value: "dns-default.openshift-dns.svc.cluster.local"
+          volumeMounts:
+            - name: nginx-conf-template
+              mountPath: /etc/nginx/templates/default.conf.template
+              subPath: default.conf.template
+          readinessProbe:
+            tcpSocket:
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 30
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+      volumes:
+        - name: proxy-tls
+          secret:
+            secretName: pydantic-gateway-tls
+        - name: proxy-secret
+          secret:
+            secretName: pydantic-gateway-proxy-secret
+        - name: nginx-conf-template
+          configMap:
+            name: pydantic-gateway-nginx-conf

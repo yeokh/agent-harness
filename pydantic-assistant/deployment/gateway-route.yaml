@@ -1,0 +1,16 @@
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: pydantic-gateway
+  labels:
+    app: pydantic-gateway
+spec:
+  to:
+    kind: Service
+    name: pydantic-gateway
+    weight: 100
+  port:
+    targetPort: https
+  tls:
+    termination: reencrypt
+    insecureEdgeTerminationPolicy: Redirect

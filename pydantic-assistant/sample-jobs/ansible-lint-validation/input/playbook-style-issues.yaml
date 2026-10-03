@@ -1,0 +1,63 @@
+---
+-   name: Playbook with style and best practice issues
+    hosts: all
+    gather_facts: no
+
+    vars:
+        app_name: "My Application"
+        app_ver: "1.0.0"
+        environment_variable_name_is_very_long_and_should_be_broken_into_multiple_lines_or_shortened: "value"
+
+    tasks:
+    -   name:    Task with inconsistent spacing
+        package:
+            name:      git
+            state:     present
+
+    -   name: Using deprecated loop syntax
+        debug:
+            msg: "{{ item }}"
+        with_items:
+            - item1
+            - item2
+            - item3
+            - item4
+            - item5
+            - item6
+
+    -   name: Line too long - this line contains a very long description that exceeds the recommended maximum line length and should be wrapped or shortened for better readability and maintainability
+        debug:
+            msg: "Long line"
+
+    -   name: Missing spaces in YAML
+        shell: "echo 'This is a shell command' && ls -la /tmp"
+        register: result
+
+    -   name:   Task without proper handler notification
+        lineinfile:
+            path: /etc/nginx/nginx.conf
+            regexp: "worker_processes"
+            line: "worker_processes auto;"
+
+    -   name: Using bare variables
+        debug:
+            msg: "{{ result }}"
+        when: result is defined
+
+    -   name: Inconsistent indentation here
+      file:
+        path: /tmp/test
+        state: directory
+
+    -   name: Key duplication in task
+        debug:
+            msg: "First message"
+        debug:
+            msg: "Second message"
+
+    -   name: Missing description for handler
+        handlers:
+            - name:
+              systemd:
+                name: nginx
+                state: restarted

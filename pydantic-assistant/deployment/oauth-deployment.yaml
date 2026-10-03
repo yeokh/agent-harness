@@ -1,0 +1,108 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pydantic-assistant-oauth
+  labels:
+    app: pydantic-assistant
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pydantic-assistant
+  template:
+    metadata:
+      labels:
+        app: pydantic-assistant
+    spec:
+      serviceAccountName: pydantic-assistant
+      containers:
+        # Main application container — bound to localhost only. It is NOT
+        # reachable except through the oauth-proxy sidecar below, which is
+        # the only container exposing a port outside the pod.
+        - name: pydantic-assistant
+          image: quay.io/kenghua_yeo/pydantic-assistant:v1
+          ports:
+            - containerPort: 8081
+              protocol: TCP
+          envFrom:
+            - secretRef:
+                name: pydantic-assistant-api-keys
+          env:
+            - name: API_PROVIDER
+              value: "openai-compatible"
+            - name: MODEL
+              value: "llama3.2"
+            - name: MAX_TURNS
+              value: "50"
+            - name: MAX_OUTPUT_TOKENS
+              value: "16384"
+            - name: ALLOW_SHELL
+              value: "false"
+            - name: SHELL_TIMEOUT
+              value: "60"
+            - name: PORT
+              value: "8081"
+            - name: HOST
+              value: "127.0.0.1"
+          volumeMounts:
+            - name: agent-volume
+              mountPath: /app/agent
+            - name: input-volume
+              mountPath: /app/input
+            - name: output-volume
+              mountPath: /app/output
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+
+        # oauth-proxy sidecar — the only container that is network-exposed.
+        # Authenticates users via the cluster's OpenShift OAuth server before
+        # forwarding traffic to the app on localhost:8081.
+        - name: oauth-proxy
+          image: registry.redhat.io/openshift4/ose-oauth-proxy:latest
+          ports:
+            - containerPort: 4443
+              protocol: TCP
+          args:
+            - --https-address=:4443
+            - --provider=openshift
+            - --openshift-service-account=pydantic-assistant
+            - --upstream=http://localhost:8081
+            - --tls-cert=/etc/tls/private/tls.crt
+            - --tls-key=/etc/tls/private/tls.key
+            - --cookie-secret-file=/etc/proxy/secrets/session_secret
+            # Uncomment to restrict access to users who can "get pods" in this
+            # namespace, instead of allowing any authenticated cluster user:
+            # - --openshift-sar={"resource":"pods","verb":"get"}
+          volumeMounts:
+            - name: proxy-tls
+              mountPath: /etc/tls/private
+            - name: proxy-secret
+              mountPath: /etc/proxy/secrets
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+      volumes:
+        - name: agent-volume
+          persistentVolumeClaim:
+            claimName: pydantic-assistant-agent-pvc
+        - name: input-volume
+          persistentVolumeClaim:
+            claimName: pydantic-assistant-input-pvc
+        - name: output-volume
+          persistentVolumeClaim:
+            claimName: pydantic-assistant-output-pvc
+        - name: proxy-tls
+          secret:
+            secretName: pydantic-assistant-tls
+        - name: proxy-secret
+          secret:
+            secretName: pydantic-assistant-proxy-secret

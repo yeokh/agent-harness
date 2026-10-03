@@ -1,0 +1,48 @@
+FROM registry.access.redhat.com/ubi9/python-312
+
+LABEL io.k8s.display-name="Pydantic Assistant" \
+      io.k8s.description="Flask + Pydantic AI assistant combining interactive Chat and autonomous Batch modes" \
+      io.openshift.expose-services="8081:http" \
+      io.openshift.tags="python,pydantic-ai,chat,batch,ai-assistant"
+
+# The base image defaults to a non-root user; switch to root for the build
+# steps, then drop back to a non-root UID before CMD (see below).
+USER 0
+WORKDIR /app
+
+COPY pyproject.toml .
+COPY README.md .
+COPY agent_core.py .
+COPY web_app.py .
+COPY templates/ templates/
+COPY sample-jobs/ sample-jobs/
+
+RUN pip install --no-cache-dir .
+
+RUN mkdir -p /app/agent /app/input /app/output && \
+    chown -R 1001:0 /app && \
+    chmod -R g=u /app
+
+ENV AGENT_DIR=/app/agent \
+    INPUT_DIR=/app/input \
+    OUTPUT_DIR=/app/output \
+    JOBS_DIR=/app/sample-jobs \
+    API_PROVIDER=openai-compatible \
+    MODEL=llama3.2 \
+    MAX_TURNS=50 \
+    MAX_OUTPUT_TOKENS=16384 \
+    ALLOW_SHELL=true \
+    SHELL_TIMEOUT=60 \
+    PORT=8081 \
+    HOST=0.0.0.0
+
+# agent/, input/, and output/ are expected to be backed by volumes (Podman named
+# volumes locally, PersistentVolumeClaims on OpenShift). sample-jobs/ is bundled
+# read-only reference data baked into the image — it is never written to.
+VOLUME ["/app/agent", "/app/input", "/app/output"]
+
+EXPOSE 8081
+
+USER 1001
+
+CMD ["python", "web_app.py"]

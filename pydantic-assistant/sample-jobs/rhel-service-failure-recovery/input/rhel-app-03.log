@@ -1,0 +1,68 @@
+===== Host: rhel-app-03 (192.168.20.13) =====
+===== Log extract: journalctl -xe --since "2026-06-20 03:00:00" =====
+===== Collected: 2026-06-20 05:38:59 UTC =====
+
+-- Redis fails due to kernel overcommit setting --
+Jun 20 03:00:05 rhel-app-03 systemd[1]: Starting Advanced key-value store...
+Jun 20 03:00:05 rhel-app-03 redis-server[19210]: # oO0OoO0OoO0Oo Redis is starting oO0OoO0OoO0Oo
+Jun 20 03:00:05 rhel-app-03 redis-server[19210]: # Redis version=7.2.4, bits=64, commit=00000000, modified=0, pid=19210, just started
+Jun 20 03:00:05 rhel-app-03 redis-server[19210]: # Configuration loaded
+Jun 20 03:00:05 rhel-app-03 redis-server[19210]: * Increased maximum number of open files to 10032 (it was originally set to 1024).
+Jun 20 03:00:05 rhel-app-03 redis-server[19210]: # WARNING overcommit_memory is set to 0!
+Jun 20 03:00:05 rhel-app-03 redis-server[19210]: # Background save may fail under low memory condition.
+Jun 20 03:00:05 rhel-app-03 redis-server[19210]: # To fix this issue add 'vm.overcommit_memory = 1' to /etc/sysctl.conf and then reboot or run the command
+Jun 20 03:00:05 rhel-app-03 redis-server[19210]: # 'sysctl vm.overcommit_memory=1' for this to take effect.
+Jun 20 03:00:05 rhel-app-03 redis-server[19210]: # WARNING: The TCP backlog setting of 511 cannot be enforced because /proc/sys/net/core/somaxconn is set to the lower value of 128.
+Jun 20 03:00:05 rhel-app-03 redis-server[19210]: # Server initialized
+Jun 20 03:00:05 rhel-app-03 redis-server[19210]: # Redis can't save in background: fork: Cannot allocate memory
+Jun 20 03:00:05 rhel-app-03 redis-server[19210]: # SIGTERM calling exit
+Jun 20 03:00:05 rhel-app-03 systemd[1]: redis.service: Main process exited, code=exited, status=1/FAILURE
+Jun 20 03:00:05 rhel-app-03 systemd[1]: redis.service: Failed with result 'exit-code'.
+Jun 20 03:00:05 rhel-app-03 systemd[1]: Failed to start Advanced key-value store.
+Jun 20 03:00:35 rhel-app-03 systemd[1]: redis.service: Scheduled restart job, restart counter is at 1.
+Jun 20 03:00:35 rhel-app-03 redis-server[19288]: # Redis can't save in background: fork: Cannot allocate memory
+Jun 20 03:00:35 rhel-app-03 systemd[1]: redis.service: Failed with result 'exit-code'.
+Jun 20 03:01:05 rhel-app-03 systemd[1]: redis.service: Scheduled restart job, restart counter is at 2.
+Jun 20 03:01:05 rhel-app-03 redis-server[19341]: # Redis can't save in background: fork: Cannot allocate memory
+Jun 20 03:01:05 rhel-app-03 systemd[1]: redis.service: Failed with result 'exit-code'.
+Jun 20 03:01:05 rhel-app-03 systemd[1]: redis.service: Reached start limit 3 in 60s. Not starting.
+Jun 20 03:01:05 rhel-app-03 systemd[1]: redis.service: Unit entered failed state.
+Jun 20 03:01:05 rhel-app-03 systemd[1]: Failed to start Advanced key-value store.
+
+-- celery worker instances fail because redis is unavailable --
+Jun 20 03:01:06 rhel-app-03 systemd[1]: Starting Celery Worker Instance 1...
+Jun 20 03:01:06 rhel-app-03 celery[19380]: [2026-06-20 03:01:06,112: ERROR/MainProcess] consumer: Cannot connect to redis://127.0.0.1:6379//: Error 111 connecting to 127.0.0.1:6379. Connection refused.
+Jun 20 03:01:06 rhel-app-03 celery[19380]: [2026-06-20 03:01:06,113: ERROR/MainProcess] Trying to reconnect in 2.00 seconds...
+Jun 20 03:01:08 rhel-app-03 celery[19380]: [2026-06-20 03:01:08,221: ERROR/MainProcess] consumer: Cannot connect to redis://127.0.0.1:6379//: Error 111 connecting to 127.0.0.1:6379. Connection refused.
+Jun 20 03:01:08 rhel-app-03 celery[19380]: [2026-06-20 03:01:08,222: ERROR/MainProcess] Trying to reconnect in 4.00 seconds...
+Jun 20 03:01:12 rhel-app-03 celery[19380]: [2026-06-20 03:01:12,338: CRITICAL/MainProcess] Unrecoverable error: OperationalError('Error 111 connecting to 127.0.0.1:6379. Connection refused.')
+Jun 20 03:01:12 rhel-app-03 systemd[1]: celery-worker@1.service: Main process exited, code=exited, status=1/FAILURE
+Jun 20 03:01:12 rhel-app-03 systemd[1]: celery-worker@1.service: Failed with result 'exit-code'.
+Jun 20 03:01:12 rhel-app-03 systemd[1]: Failed to start Celery Worker Instance 1.
+Jun 20 03:01:13 rhel-app-03 systemd[1]: Starting Celery Worker Instance 2...
+Jun 20 03:01:13 rhel-app-03 celery[19410]: [2026-06-20 03:01:13,044: CRITICAL/MainProcess] Unrecoverable error: OperationalError('Error 111 connecting to 127.0.0.1:6379. Connection refused.')
+Jun 20 03:01:13 rhel-app-03 systemd[1]: celery-worker@2.service: Main process exited, code=exited, status=1/FAILURE
+Jun 20 03:01:13 rhel-app-03 systemd[1]: celery-worker@2.service: Failed with result 'exit-code'.
+Jun 20 03:01:13 rhel-app-03 systemd[1]: Failed to start Celery Worker Instance 2.
+
+-- Current kernel parameters --
+vm.overcommit_memory = 0
+net.core.somaxconn = 128
+
+-- Current unit status --
+● redis.service - Advanced key-value store
+   Loaded: loaded (/usr/lib/systemd/system/redis.service; enabled)
+   Active: failed (Result: exit-code) since Fri 2026-06-20 03:01:05 UTC
+● celery-worker@1.service - Celery Worker Instance 1
+   Loaded: loaded (/etc/systemd/system/celery-worker@.service; enabled)
+   Active: failed (Result: exit-code) since Fri 2026-06-20 03:01:12 UTC
+● celery-worker@2.service - Celery Worker Instance 2
+   Loaded: loaded (/etc/systemd/system/celery-worker@.service; enabled)
+   Active: failed (Result: exit-code) since Fri 2026-06-20 03:01:13 UTC
+
+-- /etc/sysctl.conf (current) --
+# System default settings live in /usr/lib/sysctl.d/
+# To override a whole file, create a new file with the same in
+# /etc/sysctl.d/ and put new settings there. To override only specific
+# settings, add them to /etc/sysctl.d/99-local.conf
+# No overcommit or somaxconn entries present --

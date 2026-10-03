@@ -1,0 +1,12 @@
+Recommended monitoring alerts:
+- Memory usage > 75% (JVM)
+- Database connection pool > 90% utilization
+- Disk I/O errors detected
+- AppArmor denied operations
+- SYN flood detection on port 8080
+- Database query duration > 1000ms
+- Order validation errors
+- Cache hit rate < 60%
+- Java process termination events
+- Backup job failures
+- System OOM kill events

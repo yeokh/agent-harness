@@ -1,0 +1,16 @@
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: pydantic-assistant
+  labels:
+    app: pydantic-assistant
+spec:
+  to:
+    kind: Service
+    name: pydantic-assistant
+    weight: 100
+  port:
+    targetPort: http
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect

@@ -1,0 +1,45 @@
+REQUEST ID: PB-2026-004
+DATE: 2026-06-20
+REQUESTED BY: Daniel Osei
+
+--- TARGET ---
+HOSTNAME: win-web-01, win-web-02
+IP ADDRESS: 10.10.9.51, 10.10.9.52
+OS: Windows Server
+OS VERSION: 2019 Standard
+BECOME: no
+
+--- TASK ---
+TITLE: Install IIS and deploy placeholder corporate website
+
+EXPECTED OUTCOME:
+  IIS (Web Server role) is installed with the following features:
+    - Static content serving
+    - Default document support
+    - HTTP logging
+    - Request monitoring
+    - Request filtering
+    - Static content compression
+  The IIS web service (W3SVC) is running and starts automatically on reboot
+  A folder exists at C:\inetpub\sites\corpsite to hold the website files
+  A placeholder home page (index.html) is in that folder with:
+    - Page title: "Corporate Portal"
+    - Body text: "Site coming soon."
+  An IIS website named "CorpSite" is configured with:
+    - Content folder: C:\inetpub\sites\corpsite
+    - Listening on port 80 for all IP addresses
+    - Host header: corpsite.example.com
+    - Application pool named "CorpSitePool" (no managed .NET code, integrated pipeline)
+    - Website is in started state
+  A Windows Firewall inbound rule allows TCP port 80
+  The default IIS website ("Default Web Site") is stopped to avoid a port 80 conflict
+
+--- CONSTRAINTS ---
+  Both web servers must be configured identically
+  Running this automation more than once must not cause errors or create duplicate sites/pools
+
+--- NOTES ---
+Both servers sit behind an F5 load balancer.
+This is the initial IIS setup only — application code will be deployed in a separate request.
+The placeholder page is just to confirm IIS is serving content correctly after setup.
+SSL/HTTPS will be configured in a follow-up request (PB-2026-005).

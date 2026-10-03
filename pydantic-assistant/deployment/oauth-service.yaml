@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: pydantic-assistant-oauth
+  labels:
+    app: pydantic-assistant
+  annotations:
+    # OpenShift service-serving-cert controller auto-generates a TLS cert/key
+    # into this Secret and mounts-ready volume for the oauth-proxy container.
+    service.alpha.openshift.io/serving-cert-secret-name: pydantic-assistant-tls
+spec:
+  selector:
+    app: pydantic-assistant
+  ports:
+    - name: https
+      port: 4443
+      targetPort: 4443
+      protocol: TCP

@@ -1,0 +1,10 @@
+{
+  "database_connection_timeout": 10,
+  "user_request_failed": 8,
+  "memory_allocation_failed": 3,
+  "order_validation_error": 2,
+  "slow_query_warning": 2,
+  "oom_kill": 1,
+  "disk_io_error": 1,
+  "apparmor_denied": 3,
+  "syn_flood_detected": 3

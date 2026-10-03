@@ -1,0 +1,79 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pydantic-assistant
+  labels:
+    app: pydantic-assistant
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pydantic-assistant
+  template:
+    metadata:
+      labels:
+        app: pydantic-assistant
+    spec:
+      containers:
+        - name: pydantic-assistant
+          image: quay.io/kenghua_yeo/pydantic-assistant:v1
+          ports:
+            - containerPort: 8081
+              protocol: TCP
+          envFrom:
+            - secretRef:
+                name: pydantic-assistant-api-keys
+          env:
+            - name: API_PROVIDER
+              value: "openai-compatible"
+            - name: MODEL
+              value: "llama3.2"
+            - name: MAX_TURNS
+              value: "50"
+            - name: MAX_OUTPUT_TOKENS
+              value: "16384"
+            - name: ALLOW_SHELL
+              value: "false"
+            - name: SHELL_TIMEOUT
+              value: "60"
+            - name: PORT
+              value: "8081"
+            - name: HOST
+              value: "0.0.0.0"
+          volumeMounts:
+            - name: agent-volume
+              mountPath: /app/agent
+            - name: input-volume
+              mountPath: /app/input
+            - name: output-volume
+              mountPath: /app/output
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8081
+            initialDelaySeconds: 15
+            periodSeconds: 30
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8081
+            initialDelaySeconds: 5
+            periodSeconds: 10
+      volumes:
+        - name: agent-volume
+          persistentVolumeClaim:
+            claimName: pydantic-assistant-agent-pvc
+        - name: input-volume
+          persistentVolumeClaim:
+            claimName: pydantic-assistant-input-pvc
+        - name: output-volume
+          persistentVolumeClaim:
+            claimName: pydantic-assistant-output-pvc

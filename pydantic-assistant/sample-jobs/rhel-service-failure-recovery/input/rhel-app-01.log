@@ -1,0 +1,63 @@
+===== Host: rhel-app-01 (192.168.20.11) =====
+===== Log extract: journalctl -xe --since "2026-06-20 01:00:00" =====
+===== Collected: 2026-06-20 05:10:44 UTC =====
+
+-- PostgreSQL fails first --
+Jun 20 01:14:02 rhel-app-01 systemd[1]: Starting PostgreSQL 14 Database Server...
+Jun 20 01:14:02 rhel-app-01 postgresql-14[8821]: +  Migration in progress, /var/lib/pgsql/data is owned by root
+Jun 20 01:14:02 rhel-app-01 postgresql-14[8821]: +  postgresql.conf not found in /var/lib/pgsql/14/data
+Jun 20 01:14:02 rhel-app-01 pg_ctl[8821]: /usr/bin/pg_ctl: cannot be run as root
+Jun 20 01:14:02 rhel-app-01 systemd[1]: postgresql-14.service: Control process exited, code=exited, status=1/FAILURE
+Jun 20 01:14:02 rhel-app-01 systemd[1]: postgresql-14.service: Failed with result 'exit-code'.
+Jun 20 01:14:02 rhel-app-01 systemd[1]: Failed to start PostgreSQL 14 Database Server.
+
+-- pgbouncer fails because postgres is not available --
+Jun 20 01:14:03 rhel-app-01 systemd[1]: Starting PgBouncer connection pooler...
+Jun 20 01:14:03 rhel-app-01 pgbouncer[8855]: 2026-06-20 01:14:03.112 UTC [8855] LOG kernel file descriptor limit: 1048576 (max 1048576)
+Jun 20 01:14:03 rhel-app-01 pgbouncer[8855]: 2026-06-20 01:14:03.113 UTC [8855] LOG listening on 127.0.0.1:6432
+Jun 20 01:14:13 rhel-app-01 pgbouncer[8855]: 2026-06-20 01:14:13.041 UTC [8855] WARNING C-0x561a14: app/appuser@127.0.0.1:6432 login attempt: db=app user=appuser tls=no
+Jun 20 01:14:13 rhel-app-01 pgbouncer[8855]: 2026-06-20 01:14:13.042 UTC [8855] ERROR S-0x561b22: app/appuser@127.0.0.1:5432 connect failed: Connection refused
+Jun 20 01:14:23 rhel-app-01 pgbouncer[8855]: 2026-06-20 01:14:23.118 UTC [8855] ERROR S-0x561b22: app/appuser@127.0.0.1:5432 connect failed: Connection refused
+Jun 20 01:14:33 rhel-app-01 pgbouncer[8855]: 2026-06-20 01:14:33.204 UTC [8855] ERROR S-0x561b22: app/appuser@127.0.0.1:5432 connect failed: Connection refused
+Jun 20 01:14:33 rhel-app-01 systemd[1]: pgbouncer.service: Watchdog timeout (limit 30s)!
+Jun 20 01:14:33 rhel-app-01 systemd[1]: pgbouncer.service: Killing process 8855 with signal SIGABRT.
+Jun 20 01:14:33 rhel-app-01 systemd[1]: pgbouncer.service: Main process exited, code=killed, signal=ABRT
+Jun 20 01:14:33 rhel-app-01 systemd[1]: pgbouncer.service: Failed with result 'watchdog'.
+Jun 20 01:14:33 rhel-app-01 systemd[1]: Failed to start PgBouncer connection pooler.
+
+-- app-api fails because pgbouncer is not available --
+Jun 20 01:14:34 rhel-app-01 systemd[1]: Starting Application API Service...
+Jun 20 01:14:34 rhel-app-01 app-api[8901]: INFO  [main] Starting AppApiApplication
+Jun 20 01:14:35 rhel-app-01 app-api[8901]: INFO  [main] Connecting to database via pgbouncer at 127.0.0.1:6432
+Jun 20 01:14:35 rhel-app-01 app-api[8901]: ERROR [main] Connection to 127.0.0.1:6432 refused
+Jun 20 01:14:35 rhel-app-01 app-api[8901]: ERROR [main] Failed to obtain JDBC connection; nested exception: java.net.ConnectException: Connection refused (Connection refused)
+Jun 20 01:14:35 rhel-app-01 app-api[8901]: ERROR [main] Application startup failed — database unavailable
+Jun 20 01:14:35 rhel-app-01 systemd[1]: app-api.service: Main process exited, code=exited, status=1/FAILURE
+Jun 20 01:14:35 rhel-app-01 systemd[1]: app-api.service: Failed with result 'exit-code'.
+Jun 20 01:14:35 rhel-app-01 systemd[1]: Failed to start Application API Service.
+
+-- Current unit status --
+● postgresql-14.service - PostgreSQL 14 Database Server
+   Loaded: loaded (/usr/lib/systemd/system/postgresql-14.service; enabled)
+   Active: failed (Result: exit-code) since Fri 2026-06-20 01:14:02 UTC
+● pgbouncer.service - PgBouncer connection pooler
+   Loaded: loaded (/usr/lib/systemd/system/pgbouncer.service; enabled)
+   Active: failed (Result: watchdog) since Fri 2026-06-20 01:14:33 UTC
+● app-api.service - Application API Service
+   Loaded: loaded (/etc/systemd/system/app-api.service; enabled)
+   Active: failed (Result: exit-code) since Fri 2026-06-20 01:14:35 UTC
+
+-- Data directory ownership --
+ls -la /var/lib/pgsql/
+total 4
+drwx------. 3 root     root      23 Jun 19 22:47 .       <-- should be postgres:postgres
+drwxr-xr-x. 3 postgres postgres 4096 Jun 19 22:47 14
+
+ls -la /var/lib/pgsql/14/
+total 4
+drwx------. 3 postgres postgres  23 Jun 19 22:45 data
+
+-- Context --
+# Data directory /var/lib/pgsql was re-owned to root during a manual
+# backup rsync operation run as root earlier tonight. Correct owner
+# should be postgres:postgres with mode 0700.

@@ -1,0 +1,37 @@
+Systems Requiring Diagnostic Data Collection
+==============================================
+
+SYSTEM 1: rhel8-prod-web-01
+Type: RHEL 8.6 Physical Server
+Issue: High CPU utilization, occasional service timeouts
+Environment: Production
+Criticality: High
+Contact: sysadmin@company.com
+
+SYSTEM 2: openshift-prod-cluster
+Type: Red Hat OpenShift Container Platform 4.12
+Issue: Pod scheduling failures, node pressure warnings
+Environment: Production
+Criticality: Critical
+Contact: platform-team@company.com
+
+SYSTEM 3: aap-controller-main
+Type: Ansible Automation Platform 2.3
+Issue: Job execution slowdowns, webhook delivery delays
+Environment: Production
+Criticality: High
+Contact: automation-team@company.com
+
+SYSTEM 4: rhel7-legacy-db-01
+Type: RHEL 7.9 Database Server
+Issue: Disk I/O high, query performance degradation
+Environment: Legacy Production
+Criticality: Medium
+Contact: dba-team@company.com
+
+SYSTEM 5: openshift-dev-cluster
+Type: Red Hat OpenShift 4.10
+Issue: Network policy enforcement not working correctly
+Environment: Development
+Criticality: Medium
+Contact: dev-ops-team@company.com

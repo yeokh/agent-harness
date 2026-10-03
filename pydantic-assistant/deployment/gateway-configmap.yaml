@@ -1,0 +1,55 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pydantic-gateway-nginx-conf
+  labels:
+    app: pydantic-gateway
+data:
+  # Templated with envsubst at container startup by the nginx-unprivileged
+  # image's entrypoint (anything under /etc/nginx/templates/*.template ->
+  # /etc/nginx/conf.d/*.conf). ${POD_NAMESPACE} and ${NGINX_RESOLVER} are
+  # substituted from the container's env vars — see gateway-deployment.yaml.
+  default.conf.template: |
+    server {
+        listen 8080;
+        server_tokens off;
+
+        # Required so Server-Sent Event streams (Chat, Batch Live Log, App
+        # Logs) are forwarded to the browser as they happen, not buffered.
+        proxy_buffering off;
+        proxy_http_version 1.1;
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+        chunked_transfer_encoding on;
+
+        # In-cluster DNS resolver, used below to resolve each assistant's
+        # Service name *at request time* (not once at nginx startup), so new
+        # assistants work immediately without reloading/redeploying this
+        # gateway.
+        resolver ${NGINX_RESOLVER} valid=10s;
+
+        location = / {
+            default_type text/plain;
+            return 200 "Pydantic Assistant gateway. Use /<assistant-name>/\n";
+        }
+
+        # "/<name>" with no trailing slash -> redirect to "/<name>/" so the
+        # app's own relative asset/API references resolve correctly.
+        location ~ ^/(?<bare_name>[^/]+)$ {
+            return 301 /$bare_name/;
+        }
+
+        # "/<name>/<rest...>" -> proxy to that assistant's own Service,
+        # stripping the "/<name>" prefix (the app itself is never told about
+        # the gateway's path routing — it just sees normal root-relative
+        # requests, e.g. "/api/chat").
+        location ~ ^/(?<name>[^/]+)/(?<rest>.*)$ {
+            set $backend "http://$name.${POD_NAMESPACE}.svc.cluster.local:8081";
+            proxy_pass $backend/$rest$is_args$args;
+            proxy_set_header Host              $host;
+            proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_set_header X-Forwarded-Prefix /$name;
+            proxy_set_header Connection         "";
+        }
+    }

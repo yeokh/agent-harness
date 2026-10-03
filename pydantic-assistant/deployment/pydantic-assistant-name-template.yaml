@@ -1,0 +1,247 @@
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: pydantic-assistant-name
+  annotations:
+    openshift.io/display-name: "Pydantic Assistant (named instance)"
+    description: >-
+      Deploys one named instance of Pydantic Assistant (its own Deployment,
+      Service, API-key Secret, and agent/input/output PVCs — no Route). Reach
+      it through the shared "pydantic-gateway" Route at
+      https://<gateway-host>/<ASSISTANT_NAME>/ instead of its own URL. Deploy
+      this template once per assistant you want running side by side; the
+      shared gateway (see deployment/gateway-*.yaml, deployed once) finds
+      each one automatically by its Service name. Requires the gateway to
+      already be deployed in this project — see deployment/README.md.
+    openshift.io/provider-display-name: "RH Workshop"
+    iconClass: icon-python
+    tags: "pydantic,agent,workshop"
+objects:
+  - apiVersion: v1
+    kind: Secret
+    metadata:
+      name: ${ASSISTANT_NAME}-api-keys
+      labels:
+        app: ${ASSISTANT_NAME}
+    type: Opaque
+    stringData:
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL}
+
+  - apiVersion: v1
+    kind: PersistentVolumeClaim
+    metadata:
+      name: ${ASSISTANT_NAME}-agent-pvc
+      labels:
+        app: ${ASSISTANT_NAME}
+    spec:
+      accessModes:
+        - ReadWriteOnce
+      resources:
+        requests:
+          storage: ${AGENT_STORAGE_SIZE}
+
+  - apiVersion: v1
+    kind: PersistentVolumeClaim
+    metadata:
+      name: ${ASSISTANT_NAME}-input-pvc
+      labels:
+        app: ${ASSISTANT_NAME}
+    spec:
+      accessModes:
+        - ReadWriteOnce
+      resources:
+        requests:
+          storage: ${INPUT_STORAGE_SIZE}
+
+  - apiVersion: v1
+    kind: PersistentVolumeClaim
+    metadata:
+      name: ${ASSISTANT_NAME}-output-pvc
+      labels:
+        app: ${ASSISTANT_NAME}
+    spec:
+      accessModes:
+        - ReadWriteOnce
+      resources:
+        requests:
+          storage: ${OUTPUT_STORAGE_SIZE}
+
+  - apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: ${ASSISTANT_NAME}
+      labels:
+        app: ${ASSISTANT_NAME}
+    spec:
+      replicas: 1
+      selector:
+        matchLabels:
+          app: ${ASSISTANT_NAME}
+      template:
+        metadata:
+          labels:
+            app: ${ASSISTANT_NAME}
+        spec:
+          containers:
+            - name: ${ASSISTANT_NAME}
+              image: ${IMAGE_NAME}
+              ports:
+                - containerPort: ${{PORT}}
+                  protocol: TCP
+              envFrom:
+                - secretRef:
+                    name: ${ASSISTANT_NAME}-api-keys
+              env:
+                - name: API_PROVIDER
+                  value: ${API_PROVIDER}
+                - name: MODEL
+                  value: ${MODEL}
+                - name: MAX_TURNS
+                  value: ${MAX_TURNS}
+                - name: MAX_OUTPUT_TOKENS
+                  value: ${MAX_OUTPUT_TOKENS}
+                - name: ALLOW_SHELL
+                  value: ${ALLOW_SHELL}
+                - name: SHELL_TIMEOUT
+                  value: "60"
+                - name: PORT
+                  value: ${PORT}
+                - name: HOST
+                  value: "0.0.0.0"
+              volumeMounts:
+                - name: agent-volume
+                  mountPath: /app/agent
+                - name: input-volume
+                  mountPath: /app/input
+                - name: output-volume
+                  mountPath: /app/output
+              resources:
+                requests:
+                  cpu: 250m
+                  memory: 512Mi
+                limits:
+                  cpu: "1"
+                  memory: 1Gi
+              livenessProbe:
+                httpGet:
+                  path: /
+                  port: ${{PORT}}
+                initialDelaySeconds: 15
+                periodSeconds: 30
+                failureThreshold: 3
+              readinessProbe:
+                httpGet:
+                  path: /
+                  port: ${{PORT}}
+                initialDelaySeconds: 5
+                periodSeconds: 10
+          volumes:
+            - name: agent-volume
+              persistentVolumeClaim:
+                claimName: ${ASSISTANT_NAME}-agent-pvc
+            - name: input-volume
+              persistentVolumeClaim:
+                claimName: ${ASSISTANT_NAME}-input-pvc
+            - name: output-volume
+              persistentVolumeClaim:
+                claimName: ${ASSISTANT_NAME}-output-pvc
+
+  # Name MUST equal ${ASSISTANT_NAME} exactly — the shared gateway resolves
+  # "/<ASSISTANT_NAME>/..." to "http://<ASSISTANT_NAME>.<namespace>.svc..."
+  # at request time, purely by this naming convention.
+  - apiVersion: v1
+    kind: Service
+    metadata:
+      name: ${ASSISTANT_NAME}
+      labels:
+        app: ${ASSISTANT_NAME}
+    spec:
+      selector:
+        app: ${ASSISTANT_NAME}
+      ports:
+        - name: http
+          port: ${{PORT}}
+          targetPort: ${{PORT}}
+          protocol: TCP
+
+parameters:
+  - name: ASSISTANT_NAME
+    displayName: Assistant name
+    description: >-
+      Unique name for this instance. Used as the prefix for all its resources
+      AND as the URL path segment at https://<gateway-host>/<ASSISTANT_NAME>/.
+      Must be a valid DNS label: lowercase alphanumeric and hyphens only,
+      starting with a letter (e.g. "workshop-alice").
+    required: true
+
+  - name: IMAGE_NAME
+    displayName: Container image
+    value: quay.io/kenghua_yeo/pydantic-assistant:v1
+    required: true
+
+  - name: PORT
+    displayName: Application port
+    value: "8081"
+    required: true
+
+  - name: API_PROVIDER
+    displayName: AI provider
+    description: "One of: anthropic, openai, openrouter, openai-compatible."
+    value: openai-compatible
+    required: true
+
+  - name: MODEL
+    displayName: Model name
+    value: llama3.2
+    required: true
+
+  - name: MAX_TURNS
+    displayName: Max tool-call turns per run (batch loop guard)
+    value: "50"
+    required: true
+
+  - name: MAX_OUTPUT_TOKENS
+    displayName: Max output tokens per model response
+    value: "16384"
+    required: true
+
+  - name: ALLOW_SHELL
+    displayName: Allow the agent to run shell commands
+    description: "true or false. Defaults to false for self-service deployments."
+    value: "false"
+    required: true
+
+  - name: AGENT_STORAGE_SIZE
+    displayName: Agent volume size
+    value: 1Gi
+    required: true
+
+  - name: INPUT_STORAGE_SIZE
+    displayName: Input volume size
+    value: 5Gi
+    required: true
+
+  - name: OUTPUT_STORAGE_SIZE
+    displayName: Output volume size
+    value: 5Gi
+    required: true
+
+  - name: ANTHROPIC_API_KEY
+    displayName: Anthropic API key
+    description: Only required if API_PROVIDER=anthropic.
+
+  - name: OPENAI_API_KEY
+    displayName: OpenAI API key
+    description: Only required if API_PROVIDER=openai.
+
+  - name: OPENROUTER_API_KEY
+    displayName: OpenRouter API key
+    description: Only required if API_PROVIDER=openrouter.
+
+  - name: OPENAI_BASE_URL
+    displayName: OpenAI-compatible base URL
+    description: Used when API_PROVIDER=openai-compatible (e.g. a local Ollama/vLLM endpoint). No key required for this provider.
+    value: "http://localhost:11434/v1"

@@ -1,0 +1,36 @@
+REQUEST ID: PB-2026-002
+DATE: 2026-06-20
+REQUESTED BY: Marcus Webb
+
+--- TARGET ---
+HOSTNAME: db-prod-01, db-prod-02, db-prod-03
+IP ADDRESS: 192.168.20.10, 192.168.20.11, 192.168.20.12
+OS: Red Hat Enterprise Linux
+OS VERSION: 8.9
+BECOME: yes
+
+--- TASK ---
+TITLE: Create application service account and configure limited sudo access
+
+EXPECTED OUTCOME:
+  A system user account named "appuser" exists on all three hosts with:
+    - UID: 1500
+    - Primary group: appgroup (GID 1500)
+    - Home directory: /opt/appuser
+    - Shell: /bin/bash
+    - No login password (SSH key authentication only)
+  The following SSH public key is authorized for appuser:
+    ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC7vX... appuser@controller
+  appuser can run the following commands as root without a password prompt:
+    /opt/app/bin/start.sh
+    /opt/app/bin/stop.sh
+  appuser cannot run any other commands as root
+  The /opt/appuser directory is owned by appuser:appgroup and not accessible to other users
+
+--- CONSTRAINTS ---
+  All three hosts must be configured identically
+  Running this automation more than once must not cause errors or duplicate entries
+
+--- NOTES ---
+These are the three PostgreSQL replica database servers.
+The appuser account is needed for the application deployment scripts to run maintenance tasks.

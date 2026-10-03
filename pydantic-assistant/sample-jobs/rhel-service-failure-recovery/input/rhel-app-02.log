@@ -1,0 +1,73 @@
+===== Host: rhel-app-02 (192.168.20.12) =====
+===== Log extract: journalctl -xe + audit.log =====
+===== Collected: 2026-06-20 05:22:17 UTC =====
+
+-- httpd fails to bind on port 8443 --
+Jun 20 02:30:01 rhel-app-02 systemd[1]: Starting The Apache HTTP Server...
+Jun 20 02:30:01 rhel-app-02 httpd[11203]: (13)Permission denied: AH00072: make_sock: could not bind to address [::]:8443
+Jun 20 02:30:01 rhel-app-02 httpd[11203]: (13)Permission denied: AH00072: make_sock: could not bind to address 0.0.0.0:8443
+Jun 20 02:30:01 rhel-app-02 httpd[11203]: no listening sockets available, shutting down
+Jun 20 02:30:01 rhel-app-02 httpd[11203]: AH00015: Unable to open logs
+Jun 20 02:30:01 rhel-app-02 systemd[1]: httpd.service: Control process exited, code=exited, status=1/FAILURE
+Jun 20 02:30:01 rhel-app-02 systemd[1]: httpd.service: Failed with result 'exit-code'.
+Jun 20 02:30:01 rhel-app-02 systemd[1]: Failed to start The Apache HTTP Server.
+Jun 20 02:30:31 rhel-app-02 systemd[1]: httpd.service: Scheduled restart job, restart counter is at 1.
+Jun 20 02:30:31 rhel-app-02 httpd[11244]: (13)Permission denied: AH00072: make_sock: could not bind to address [::]:8443
+Jun 20 02:30:31 rhel-app-02 httpd[11244]: (13)Permission denied: AH00072: make_sock: could not bind to address 0.0.0.0:8443
+Jun 20 02:30:31 rhel-app-02 systemd[1]: httpd.service: Failed with result 'exit-code'.
+Jun 20 02:30:31 rhel-app-02 systemd[1]: Failed to start The Apache HTTP Server.
+Jun 20 02:31:01 rhel-app-02 systemd[1]: httpd.service: Scheduled restart job, restart counter is at 2.
+Jun 20 02:31:01 rhel-app-02 httpd[11301]: (13)Permission denied: AH00072: make_sock: could not bind to address [::]:8443
+Jun 20 02:31:01 rhel-app-02 httpd[11301]: (13)Permission denied: AH00072: make_sock: could not bind to address 0.0.0.0:8443
+Jun 20 02:31:01 rhel-app-02 systemd[1]: httpd.service: Failed with result 'exit-code'.
+Jun 20 02:31:01 rhel-app-02 systemd[1]: Failed to start The Apache HTTP Server.
+Jun 20 02:31:01 rhel-app-02 systemd[1]: httpd.service: Start request repeated too quickly.
+Jun 20 02:31:01 rhel-app-02 systemd[1]: httpd.service: Reached start limit 3 in 60s. Not starting.
+Jun 20 02:31:01 rhel-app-02 systemd[1]: httpd.service: Unit entered failed state.
+
+-- SELinux audit denials (same timeframe) --
+type=AVC msg=audit(1750382401.112:841): avc: denied { name_bind } for pid=11203 comm="httpd" src=8443 scontext=system_u:system_r:httpd_t:s0 tcontext=system_u:object_r:unreserved_port_t:s0 tclass=tcp_socket permissive=0
+type=AVC msg=audit(1750382431.204:844): avc: denied { name_bind } for pid=11244 comm="httpd" src=8443 scontext=system_u:system_r:httpd_t:s0 tcontext=system_u:object_r:unreserved_port_t:s0 tclass=tcp_socket permissive=0
+type=AVC msg=audit(1750382461.318:847): avc: denied { name_bind } for pid=11301 comm="httpd" src=8443 scontext=system_u:system_r:httpd_t:s0 tcontext=system_u:object_r:unreserved_port_t:s0 tclass=tcp_socket permissive=0
+
+-- SELinux status --
+SELinux status:                 enabled
+SELinuxfs mount:                /sys/fs/selinux
+SELinux mount point:            /sys/fs/selinux
+Loaded policy name:             targeted
+Current mode:                   enforcing
+Mode from config file:          enforcing
+
+-- Current SELinux port labels for http --
+semanage port -l | grep http_port_t
+http_port_t                    tcp      80, 81, 443, 488, 8008, 8009, 8080, 8090
+
+-- Note: port 8443 is NOT in http_port_t; it was added as a non-standard HTTPS port during a config
+-- change last week but the SELinux label was never updated --
+
+-- httpd config excerpt --
+cat /etc/httpd/conf.d/app.conf
+Listen 8443
+<VirtualHost *:8443>
+  ServerName app.example.com
+  SSLEngine on
+  SSLCertificateFile /etc/pki/tls/certs/app.example.com.crt
+  SSLCertificateKeyFile /etc/pki/tls/private/app.example.com.key
+  ...
+</VirtualHost>
+
+-- mod_proxy_balancer depends on httpd --
+Jun 20 02:31:02 rhel-app-02 systemd[1]: Starting mod_proxy_balancer health-check...
+Jun 20 02:31:02 rhel-app-02 proxy-healthcheck[11340]: ERROR: Cannot reach upstream via httpd reverse proxy at http://127.0.0.1:8443/health
+Jun 20 02:31:02 rhel-app-02 proxy-healthcheck[11340]: ERROR: Connection refused on 127.0.0.1:8443
+Jun 20 02:31:02 rhel-app-02 systemd[1]: proxy-healthcheck.service: Main process exited, code=exited, status=1/FAILURE
+Jun 20 02:31:02 rhel-app-02 systemd[1]: proxy-healthcheck.service: Failed with result 'exit-code'.
+Jun 20 02:31:02 rhel-app-02 systemd[1]: Failed to start mod_proxy_balancer health-check.
+
+-- Current unit status --
+● httpd.service - The Apache HTTP Server
+   Loaded: loaded (/usr/lib/systemd/system/httpd.service; enabled)
+   Active: failed (Result: exit-code) since Fri 2026-06-20 02:31:01 UTC
+● proxy-healthcheck.service - mod_proxy_balancer health-check
+   Loaded: loaded (/etc/systemd/system/proxy-healthcheck.service; enabled)
+   Active: failed (Result: exit-code) since Fri 2026-06-20 02:31:02 UTC

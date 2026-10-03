@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: pydantic-assistant
+  labels:
+    app: pydantic-assistant
+spec:
+  selector:
+    app: pydantic-assistant
+  ports:
+    - name: http
+      port: 8081
+      targetPort: 8081
+      protocol: TCP

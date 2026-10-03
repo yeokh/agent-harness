@@ -1,0 +1,8 @@
+2026-05-25T08:00:01 - Application startup
+2026-05-25T08:20:45 - Database connection pool at 85% usage
+2026-05-25T08:21:15 - OOM kill: Java process terminated (memory exhaustion)
+2026-05-25T08:21:32 - Database connection timeout errors begin
+2026-05-25T08:22:00 - Disk I/O error reported
+2026-05-25T08:22:15 - AppArmor denied MySQL access to /sys/kernel/debug
+2026-05-25T08:50:00 - SYN flood detected on port 8080
+2026-05-25T09:00:00 - Daily maintenance job completes

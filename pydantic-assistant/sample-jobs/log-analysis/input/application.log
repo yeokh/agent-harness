@@ -1,0 +1,83 @@
+[2026-05-25T08:00:01.234Z] INFO  - Application starting up
+[2026-05-25T08:00:02.456Z] INFO  - Loading configuration from /etc/app/config.yaml
+[2026-05-25T08:00:03.123Z] INFO  - Initializing database connection pool with 20 connections
+[2026-05-25T08:00:04.789Z] INFO  - Database connection pool initialized successfully
+[2026-05-25T08:00:05.012Z] INFO  - Starting web server on port 8080
+[2026-05-25T08:00:05.345Z] INFO  - Server ready to accept requests
+[2026-05-25T08:10:12.567Z] INFO  - Received request: GET /api/users
+[2026-05-25T08:10:12.890Z] INFO  - Query executed: SELECT * FROM users LIMIT 100
+[2026-05-25T08:10:13.123Z] INFO  - Response sent: 200 OK (245ms)
+[2026-05-25T08:20:45.678Z] WARNING - Database connection pool is 85% full (17/20 connections in use)
+[2026-05-25T08:20:46.234Z] INFO  - New connection requested, pool has 1 available
+[2026-05-25T08:21:12.456Z] WARNING - Database connection pool is 95% full (19/20 connections in use)
+[2026-05-25T08:21:32.789Z] ERROR - Failed to acquire database connection: timeout waiting for available connection (waited 30 seconds)
+[2026-05-25T08:21:32.890Z] ERROR - User request failed: unable to fetch user data
+[2026-05-25T08:21:33.123Z] WARNING - Request timeout for client 192.168.1.100 (127 seconds elapsed)
+[2026-05-25T08:21:33.456Z] ERROR - Failed to acquire database connection: timeout waiting for available connection (waited 30 seconds)
+[2026-05-25T08:21:33.567Z] ERROR - User request failed: unable to fetch user data
+[2026-05-25T08:21:34.234Z] ERROR - Failed to acquire database connection: timeout waiting for available connection (waited 30 seconds)
+[2026-05-25T08:21:34.345Z] ERROR - User request failed: unable to fetch user data
+[2026-05-25T08:21:35.678Z] ERROR - Failed to acquire database connection: timeout waiting for available connection (waited 30 seconds)
+[2026-05-25T08:21:35.789Z] ERROR - User request failed: unable to fetch user data
+[2026-05-25T08:21:36.123Z] WARNING - Multiple connection errors detected, checking database health
+[2026-05-25T08:21:37.456Z] ERROR - Database health check failed: unable to execute test query
+[2026-05-25T08:21:37.567Z] ERROR - Failed to acquire database connection: timeout waiting for available connection (waited 30 seconds)
+[2026-05-25T08:21:37.789Z] ERROR - User request failed: unable to fetch user data
+[2026-05-25T08:21:38.234Z] ERROR - Failed to acquire database connection: timeout waiting for available connection (waited 30 seconds)
+[2026-05-25T08:21:38.456Z] ERROR - User request failed: unable to fetch user data
+[2026-05-25T08:21:39.123Z] WARNING - Cache hit rate dropping: 42% (normal is 78%)
+[2026-05-25T08:21:39.789Z] ERROR - Failed to acquire database connection: timeout waiting for available connection (waited 30 seconds)
+[2026-05-25T08:21:39.890Z] ERROR - User request failed: unable to fetch user data
+[2026-05-25T08:21:40.567Z] ERROR - Failed to acquire database connection: timeout waiting for available connection (waited 30 seconds)
+[2026-05-25T08:21:40.678Z] ERROR - User request failed: unable to fetch user data
+[2026-05-25T08:21:41.234Z] ERROR - Recovered a stale connection from pool (connection idle for 4 minutes)
+[2026-05-25T08:21:41.345Z] INFO  - Successfully reestablished connection to database
+[2026-05-25T08:21:42.123Z] WARNING - Database connection pool recovered to 60% usage (12/20)
+[2026-05-25T08:21:42.456Z] INFO  - Resuming normal operations
+[2026-05-25T08:21:43.789Z] INFO  - Processing queued requests from connection timeout period
+[2026-05-25T08:21:44.234Z] ERROR - Failed to process queued request: client connection closed
+[2026-05-25T08:21:45.567Z] ERROR - Failed to process queued request: client connection closed
+[2026-05-25T08:21:46.789Z] ERROR - Failed to process queued request: client connection closed
+[2026-05-25T08:21:47.123Z] INFO  - Completed processing of 3 failed queued requests
+[2026-05-25T08:21:48.456Z] WARNING - Retry queue has 12 pending requests
+[2026-05-25T08:21:50.678Z] INFO  - Request retry: GET /api/users - SUCCESS
+[2026-05-25T08:21:51.234Z] INFO  - Request retry: GET /api/products - SUCCESS
+[2026-05-25T08:21:52.890Z] INFO  - Request retry: POST /api/orders - SUCCESS
+[2026-05-25T08:21:53.567Z] INFO  - All retry queue items processed successfully
+[2026-05-25T08:22:00.123Z] WARNING - Memory usage at 78% (3.1GB / 4GB)
+[2026-05-25T08:22:01.456Z] WARNING - Garbage collection triggered
+[2026-05-25T08:22:02.789Z] INFO  - Garbage collection completed, freed 512MB
+[2026-05-25T08:22:03.234Z] INFO  - Memory usage now at 42%
+[2026-05-25T08:22:10.567Z] INFO  - Received request: GET /api/products
+[2026-05-25T08:22:10.678Z] INFO  - Query executed: SELECT * FROM products WHERE active=true
+[2026-05-25T08:22:10.890Z] INFO  - Response sent: 200 OK (234ms)
+[2026-05-25T08:22:15.123Z] INFO  - Received request: POST /api/orders
+[2026-05-25T08:22:15.234Z] INFO  - Validating order data
+[2026-05-25T08:22:15.456Z] WARNING - Order total mismatch: submitted=1250.00, calculated=1248.50
+[2026-05-25T08:22:15.567Z] ERROR - Order validation failed: price calculation error
+[2026-05-25T08:22:15.789Z] ERROR - Failed to create order: validation error
+[2026-05-25T08:22:16.123Z] INFO  - Received request: POST /api/orders (retry)
+[2026-05-25T08:22:16.234Z] INFO  - Validating order data
+[2026-05-25T08:22:16.456Z] INFO  - Order validation successful
+[2026-05-25T08:22:16.567Z] INFO  - Inserting order into database
+[2026-05-25T08:22:16.789Z] INFO  - Order created successfully: ORDER-2026-5847
+[2026-05-25T08:22:17.123Z] INFO  - Response sent: 201 Created
+[2026-05-25T08:30:00.234Z] INFO  - Scheduled backup job started
+[2026-05-25T08:30:01.567Z] INFO  - Exporting database to backup/database_2026-05-25.sql.gz
+[2026-05-25T08:30:45.890Z] INFO  - Database export completed (1.2GB)
+[2026-05-25T08:30:46.123Z] INFO  - Backup job completed successfully
+[2026-05-25T08:31:00.456Z] INFO  - Scheduled health check: all systems nominal
+[2026-05-25T08:40:00.789Z] INFO  - Slow query detected: query took 5234ms
+[2026-05-25T08:40:01.234Z] WARNING - Query: SELECT * FROM orders WHERE created_date > '2026-05-01' ORDER BY amount DESC
+[2026-05-25T08:40:01.567Z] WARNING - Missing index on created_date column
+[2026-05-25T08:40:01.890Z] INFO  - Recommendation: Run ANALYZE and ADD INDEX on orders(created_date)
+[2026-05-25T08:50:00.123Z] WARNING - API request rate spike detected: 450 req/sec (normal: 120 req/sec)
+[2026-05-25T08:50:01.234Z] INFO  - Activating rate limiting (max 300 req/sec per IP)
+[2026-05-25T08:50:02.567Z] WARNING - 23 requests rate-limited
+[2026-05-25T08:50:03.890Z] INFO  - Rate limiting successfully prevented overload
+[2026-05-25T09:00:00.234Z] INFO  - Daily metrics report
+[2026-05-25T09:00:00.345Z] INFO  - Total requests: 8,432
+[2026-05-25T09:00:00.456Z] INFO  - Average response time: 234ms
+[2026-05-25T09:00:00.567Z] INFO  - Error rate: 1.2%
+[2026-05-25T09:00:00.678Z] INFO  - Successful requests: 8,331 (98.8%)
+[2026-05-25T09:00:00.789Z] INFO  - Database performance: 2,234 queries, avg 45ms
