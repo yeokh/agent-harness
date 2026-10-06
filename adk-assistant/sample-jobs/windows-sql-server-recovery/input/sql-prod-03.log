@@ -1,0 +1,73 @@
+===== Host: sql-prod-03 (10.10.5.23) =====
+===== SQL Server Instance: MSSQLSERVER (default) — SQL Server 2019 (15.0.4316) =====
+===== Log extract: SQL Server ERRORLOG + Windows Application Event Log =====
+===== Collected: 2026-06-20 06:45:00 UTC =====
+
+-- SQL Server ERRORLOG --
+2026-06-20 05:02:14.33 spid53       Error: 9002, Severity: 17, State: 4.
+2026-06-20 05:02:14.33 spid53       The transaction log for database 'OrdersDB' is full due to 'LOG_BACKUP'.
+2026-06-20 05:02:14.45 spid61       Error: 9002, Severity: 17, State: 4.
+2026-06-20 05:02:14.45 spid61       The transaction log for database 'OrdersDB' is full due to 'LOG_BACKUP'.
+2026-06-20 05:02:15.01 spid53       Error: 1105, Severity: 17, State: 2.
+2026-06-20 05:02:15.01 spid53       Could not allocate space for object 'dbo.OrderLineItems' in database 'OrdersDB' because the 'PRIMARY' filegroup is full due to lack of storage space or database files reaching the maximum allowed size.
+2026-06-20 05:02:15.19 spid61       Error: 1105, Severity: 17, State: 2.
+2026-06-20 05:02:15.19 spid61       Could not allocate space for object 'dbo.Orders' in database 'OrdersDB' because the 'PRIMARY' filegroup is full due to lack of storage space or database files reaching the maximum allowed size.
+2026-06-20 05:02:16.02 spid53       Error: 3314, Severity: 21, State: 4.
+2026-06-20 05:02:16.02 spid53       During undoing of a logged operation in database 'OrdersDB' (page (1:248) if any), an error occurred at log record ID (812:1204:1). Typically, the specific failure is previously logged as an error in the Windows Event Log service.
+2026-06-20 05:02:16.44 spid5s       Error: 9001, Severity: 21, State: 5.
+2026-06-20 05:02:16.44 spid5s       The log for database 'OrdersDB' is not available. Check the event log for related error messages. Resolve any errors and restart the database.
+2026-06-20 05:02:16.50 spid5s       Database 'OrdersDB' (database ID 7) could not recover. See previous errors in the error log for additional details.
+
+-- Database and log file state (sys.master_files) --
+name             physical_name                         size_mb   max_size_mb   growth   is_percent_growth   state_desc
+-----------      ----------------------------------    -------   -----------   ------   -----------------   ----------
+OrdersDB         E:\SQLData\OrdersDB.mdf               40960     40960         0        0                   ONLINE
+OrdersDB_log     E:\SQLLog\OrdersDB_ldf.ldf            51200     51200         51200    0                   ONLINE
+-- Note: Log file is at its maximum size (51200 MB = 50 GB). --
+-- Note: Autogrowth is disabled on the log file (growth=0). --
+-- Note: E:\SQLLog has 2 GB free. Not enough to expand the log further even if autogrowth were enabled. --
+-- Note: F:\SQLBackup has 850 GB free (backup volume). --
+
+-- Recovery model and log backup history --
+SELECT name, recovery_model_desc FROM sys.databases WHERE name = 'OrdersDB'
+name         recovery_model_desc
+-----------  -------------------
+OrdersDB     FULL
+
+-- msdb backup history (last 7 days for OrdersDB) --
+backup_type   backup_finish_date        backup_size_mb   physical_device_name
+-----------   -----------------------   --------------   -----------------------------------------
+D             2026-06-19 22:00:14       39820            F:\SQLBackup\OrdersDB_FULL_20260619.bak
+D             2026-06-18 22:00:09       38910            F:\SQLBackup\OrdersDB_FULL_20260618.bak
+D             2026-06-17 22:00:11       38440            F:\SQLBackup\OrdersDB_FULL_20260617.bak
+-- Note: backup_type D = Full backup. No LOG (backup_type L) backups exist at all. --
+-- The database is in FULL recovery but transaction log backups have NEVER been configured. --
+-- The log has been growing for weeks until it hit the 50 GB max size cap today. --
+
+-- Windows Application Event Log --
+Log Name:      Application
+Source:        MSSQLSERVER
+Event ID:      9002
+Level:         Error
+Date:          2026-06-20 05:02:14
+Message:       The transaction log for database 'OrdersDB' is full due to 'LOG_BACKUP'. To find out why space in the log cannot be reused, see the log_reuse_wait_desc column in sys.databases.
+
+Log Name:      Application
+Source:        MSSQLSERVER
+Event ID:      17053
+Level:         Error
+Date:          2026-06-20 05:02:16
+Message:       E:\SQLLog\OrdersDB_ldf.ldf: Operating system error 112(There is not enough space on the disk.) encountered.
+
+-- Current database state --
+SELECT name, state_desc, log_reuse_wait_desc FROM sys.databases WHERE name = 'OrdersDB'
+name        state_desc    log_reuse_wait_desc
+----------  ----------    -------------------
+OrdersDB    RECOVERY      LOG_BACKUP
+
+-- Disk free space --
+Volume    Free_GB   Total_GB
+-------   -------   --------
+C:\       44        100
+E:\       2         200       (SQLData + SQLLog on same volume — SQLData is fine, log is full)
+F:\       850       1000      (SQLBackup volume — plenty of space)

@@ -1,0 +1,34 @@
+May 25 08:00:01 prod-server01 kernel: Linux version 4.18.0-372.32.1.el8_6.x86_64 (mockbuild@lgm-build19.osci.io) (gcc version 8.5.0 20210514 (Red Hat 8.5.0-18) (GCC))
+May 25 08:00:01 prod-server01 kernel: Command line: BOOT_IMAGE=(hd0,gpt2)/vmlinuz-4.18.0-372.32.1.el8_6.x86_64 root=UUID=a1b2c3d4-e5f6-7890-1234-567890abcdef ro
+May 25 08:00:05 prod-server01 systemd: Started System logging service.
+May 25 08:00:10 prod-server01 systemd: Started Network Manager.
+May 25 08:00:15 prod-server01 kernel: audit: type=1400 audit(1716619215.234:5): apparmor="STATUS" operation="profile_load" name="docker-default" name2="default" pid=1234 comm="apparmor_parser"
+May 25 08:05:00 prod-server01 systemd: Started Application Service.
+May 25 08:15:32 prod-server01 kernel: perf: interrupt took too long (2527 > 2500), lowering kernel.perf_event_max_sample_rate to 78000
+May 25 08:21:15 prod-server01 kernel: Out of memory: Kill process 5432 (java) score 650 or sacrifice child
+May 25 08:21:15 prod-server01 kernel: Killed process 5432 (java) total-vm:2145236kB, anon-rss:1902348kB, file-rss:0kB, shmem-rss:0kB
+May 25 08:21:16 prod-server01 kernel: oom-kill: constraint=CONSTRAINT_NONE, nodemask=(null), cpuset=/, mems_allowed=0, global_swap_limit=0
+May 25 08:21:32 prod-server01 systemd: application.service: Main process exited, code=killed, status=9/KILL
+May 25 08:21:35 prod-server01 systemd: application.service: Failed with result 'signal'.
+May 25 08:21:45 prod-server01 systemd: application.service: Service hold-off time over, scheduling restart.
+May 25 08:21:46 prod-server01 systemd: application.service: Attempting restart.
+May 25 08:21:47 prod-server01 systemd: Started Application Service.
+May 25 08:22:00 prod-server01 kernel: EXT4-fs warning (device dm-0): ext4_end_bio:330: I/O error -5
+May 25 08:22:15 prod-server01 kernel: audit: type=1400 audit(1716619335.567:125): apparmor="DENIED" operation="capable" profile="docker-default" pid=6789 comm="mysql" capability=36 capname="block_suspend"
+May 25 08:25:10 prod-server01 kernel: systemd-journal[456]: Suppressed 234 log messages from /system.slice/application.service.
+May 25 08:30:00 prod-server01 systemd: Backup job started.
+May 25 08:30:45 prod-server01 kernel: audit: type=1326 audit(1716619445.890:156): uid=0 auid=4294967295 ses=4294967295 msg='audit_event_name=FILE_UTIME audit_enabled=1 audit_loginuid_set=-1 audit_session_id=-1 audit_timestamp=1716619445 audit_type=1326 audit_id=156 action=allowed cause=syscall comm="tar" name="/backup/database_2026-05-25.sql" dev="dm-0" inode=8345 mode=0100664 ouid=0 ogid=0 obj=unconfined_u:object_r:user_home_t:s0 ver=2'
+May 25 08:31:00 prod-server01 systemd: Backup job completed.
+May 25 08:40:01 prod-server01 kernel: perf: interrupt took too long (2456 > 2500), lowering kernel.perf_event_max_sample_rate to 77000
+May 25 08:40:02 prod-server01 kernel: audit: type=1400 audit(1716619602.123:200): apparmor="DENIED" operation="open" profile="docker-default" pid=6789 comm="mysql" requested_mask="r" denied_mask="r" fsuid=1000 ouid=0 name="/sys/kernel/debug" denied_mask_not_used
+May 25 08:50:00 prod-server01 kernel: TCP: request_sock_TCP: Possible SYN flood on port 8080. Sending cookies.
+May 25 08:50:01 prod-server01 kernel: TCP: request_sock_TCP: Possible SYN flood on port 8080. Sending cookies.
+May 25 08:50:02 prod-server01 kernel: TCP: request_sock_TCP: Possible SYN flood on port 8080. Sending cookies.
+May 25 08:50:03 prod-server01 kernel: audit: type=1400 audit(1716619803.456:234): apparmor="DENIED" operation="exec" profile="docker-default" pid=7890 comm="bash" requested_mask="x" denied_mask="x" fsuid=1000 ouid=0 name="/usr/local/bin/malware_check"
+May 25 08:50:10 prod-server01 systemd: Rate limiting activated
+May 25 08:50:15 prod-server01 kernel: [drm:gen8_irq_handler [i915]] *ERROR* CPU pipe A FIFO underrun
+May 25 09:00:00 prod-server01 systemd: Daily maintenance job started.
+May 25 09:00:05 prod-server01 systemd: Running logrotate
+May 25 09:00:30 prod-server01 systemd: Purging old log files
+May 25 09:00:45 prod-server01 systemd: Disk space cleanup completed: freed 2.3GB
+May 25 09:01:00 prod-server01 systemd: Daily maintenance completed.

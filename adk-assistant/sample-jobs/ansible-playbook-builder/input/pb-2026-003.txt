@@ -1,0 +1,41 @@
+REQUEST ID: PB-2026-003
+DATE: 2026-06-20
+REQUESTED BY: Priya Nair
+
+--- TARGET ---
+HOSTNAME: win-app-01
+IP ADDRESS: 10.10.8.40
+OS: Windows Server
+OS VERSION: 2022 Datacenter
+BECOME: no
+
+--- TASK ---
+TITLE: Create local service accounts and assign group memberships
+
+EXPECTED OUTCOME:
+  The following local user accounts exist on win-app-01:
+    Account 1:
+      - Username: svc-monitor
+      - Full name: Monitoring Service Account
+      - Description: Used by the Datadog monitoring agent
+      - Password never expires: yes
+      - Account disabled: no
+    Account 2:
+      - Username: svc-backup
+      - Full name: Backup Service Account
+      - Description: Used by Veeam backup agent
+      - Password never expires: yes
+      - Account disabled: no
+  Both accounts are members of the local "Remote Desktop Users" group
+  Both accounts are members of the local "Event Log Readers" group
+  Neither account is a member of the local "Administrators" group
+
+--- CONSTRAINTS ---
+  Passwords must not be stored in plain text anywhere in the automation files
+  If an account already exists, its password must not be reset — only create the password on first run
+  Running this automation more than once must not cause errors
+
+--- NOTES ---
+win-app-01 is a production application server.
+Datadog and Veeam agents will be installed separately — this request only covers account creation.
+Passwords will be provided securely by the security team before the automation is run.

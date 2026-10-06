@@ -1,0 +1,30 @@
+REQUEST ID: PB-2026-001
+DATE: 2026-06-20
+REQUESTED BY: Sarah Chen
+
+--- TARGET ---
+HOSTNAME: web-prod-01
+IP ADDRESS: 192.168.10.50
+OS: Red Hat Enterprise Linux
+OS VERSION: 9.3
+BECOME: yes
+
+--- TASK ---
+TITLE: Configure firewall for new Java web application
+
+EXPECTED OUTCOME:
+  The firewall service is running and starts automatically on reboot
+  Port 8080 (TCP) is open for inbound traffic (HTTP for the Java app)
+  Port 8443 (TCP) is open for inbound traffic (HTTPS for the Java app)
+  Port 9090 (TCP) is open for inbound traffic (WildFly admin console)
+  All rules survive a server reboot
+  No existing firewall rules for other services are removed
+
+--- CONSTRAINTS ---
+  Do not open or modify port 22
+  Running this automation more than once must not cause errors or duplicate rules
+
+--- NOTES ---
+This is for a new internal Java application deploying to this host next week.
+The app team confirmed port 8080 for HTTP and 8443 for HTTPS.
+Port 9090 is the WildFly admin console, only needed temporarily for initial setup.

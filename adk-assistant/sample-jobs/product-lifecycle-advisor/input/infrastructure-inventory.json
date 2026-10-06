@@ -1,0 +1,105 @@
+{
+  "infrastructure_inventory": {
+    "timestamp": "2026-05-25T00:00:00Z",
+    "organization": "Example Corp",
+    "systems": [
+      {
+        "name": "web-servers",
+        "product": "RHEL",
+        "version": "7.9",
+        "count": 15,
+        "environment": "Production",
+        "criticality": "High",
+        "notes": "Legacy web platform, internal use"
+      },
+      {
+        "name": "app-servers",
+        "product": "RHEL",
+        "version": "8.6",
+        "count": 24,
+        "environment": "Production",
+        "criticality": "High",
+        "notes": "Main application tier"
+      },
+      {
+        "name": "database-cluster",
+        "product": "RHEL",
+        "version": "8.4",
+        "count": 4,
+        "environment": "Production",
+        "criticality": "Critical",
+        "notes": "Primary database infrastructure"
+      },
+      {
+        "name": "container-platform-prod",
+        "product": "OpenShift Container Platform",
+        "version": "4.10",
+        "count": 3,
+        "environment": "Production",
+        "criticality": "Critical",
+        "notes": "Main container orchestration"
+      },
+      {
+        "name": "container-platform-dev",
+        "product": "OpenShift Container Platform",
+        "version": "4.12",
+        "count": 1,
+        "environment": "Development",
+        "criticality": "Medium",
+        "notes": "Development cluster"
+      },
+      {
+        "name": "automation-platform",
+        "product": "Red Hat Ansible Automation Platform",
+        "version": "2.1",
+        "count": 1,
+        "environment": "Production",
+        "criticality": "High",
+        "notes": "Automation controller and execution nodes"
+      },
+      {
+        "name": "monitoring-stack",
+        "product": "RHEL",
+        "version": "9.1",
+        "count": 3,
+        "environment": "Production",
+        "criticality": "High",
+        "notes": "Prometheus and Grafana monitoring"
+      },
+      {
+        "name": "storage-system",
+        "product": "RHEL",
+        "version": "7.6",
+        "count": 2,
+        "environment": "Production",
+        "criticality": "Critical",
+        "notes": "NFS storage backend"
+      },
+      {
+        "name": "satellite-server",
+        "product": "Red Hat Satellite",
+        "version": "6.11",
+        "count": 1,
+        "environment": "Production",
+        "criticality": "High",
+        "notes": "Patch management and compliance"
+      },
+      {
+        "name": "iam-servers",
+        "product": "RHEL",
+        "version": "8.5",
+        "count": 2,
+        "environment": "Production",
+        "criticality": "Critical",
+        "notes": "LDAP/Kerberos authentication infrastructure"
+      }
+    ],
+    "business_requirements": {
+      "minimum_support_level": "Full Support",
+      "preferred_update_window": "Quarterly (Jan, Apr, Jul, Oct)",
+      "max_downtime_acceptable": "4 hours",
+      "budget_constraints": "Limited - prioritize critical systems",
+      "compliance_requirements": "PCI-DSS, SOC2"
+    }
+  }
+}

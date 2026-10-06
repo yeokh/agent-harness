@@ -1,0 +1,2001 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ADK Assistant</title>
+<style>
+:root {
+  --bg:        #f0f2f5;
+  --panel:     #ffffff;
+  --border:    #dde1e7;
+  --text:      #1a2332;
+  --muted:     #6b7a8f;
+  --accent:    #2563eb;
+  --accent-h:  #1d4ed8;
+  --green:     #16a34a;
+  --amber:     #d97706;
+  --red:       #dc2626;
+  --you-bg:    #2563eb;
+  --you-text:  #ffffff;
+  --ai-bg:     #ffffff;
+  --ai-text:   #1a2332;
+  --inst-bg:   #f0f9ff;
+  --inst-brd:  #bae6fd;
+  --skill-bg:  #f0fdf4;
+  --skill-brd: #86efac;
+  --tool-bg:   #1e293b;
+  --term-text: #e2e8f0;
+  --sidebar:   224px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+  background: var(--bg); color: var(--text);
+  display: flex; flex-direction: column; overflow: hidden;
+}
+
+/* ── Header ─────────────────────────────────────────────────────────────── */
+header {
+  display: flex; align-items: center; gap: 8px;
+  padding: 9px 14px; background: var(--panel);
+  border-bottom: 1px solid var(--border); flex-shrink: 0;
+  min-height: 48px;
+}
+header h1 { font-size: 15px; font-weight: 700; white-space: nowrap; }
+.badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11.5px; padding: 3px 9px; border-radius: 999px;
+  background: #eef0f5; color: var(--muted); white-space: nowrap;
+}
+.badge .dot { width: 7px; height: 7px; border-radius: 50%; background: #94a3b8; }
+.badge.running .dot { background: var(--amber); animation: pulse 1.2s infinite; }
+.badge.completed .dot { background: var(--green); }
+.badge.error .dot { background: var(--red); }
+@keyframes pulse { 50% { opacity: .3; } }
+.spacer { flex: 1; }
+select, input[type=text], input[type=password], input[type=number] {
+  font: inherit; font-size: 12.5px; padding: 4px 7px;
+  border: 1px solid var(--border); border-radius: 6px; background: #fff;
+  color: var(--text); max-width: 200px;
+}
+button {
+  font: inherit; font-size: 12.5px; padding: 5px 12px; border-radius: 6px;
+  border: 1px solid var(--border); background: #fff; color: var(--text);
+  cursor: pointer; white-space: nowrap;
+}
+button:hover:not(:disabled) { background: #f1f3f7; }
+button:disabled { opacity: .45; cursor: not-allowed; }
+button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+button.primary:hover:not(:disabled) { background: var(--accent-h); }
+button.danger  { background: #fef2f2; border-color: #fecaca; color: var(--red); }
+button.danger:hover:not(:disabled)  { background: #fee2e2; }
+button.stop    { background: #fffbeb; border-color: #fde68a; color: var(--amber); font-weight: 600; }
+button.stop:hover:not(:disabled)    { background: #fef3c7; }
+button.small { padding: 2px 8px; font-size: 11px; }
+button.icon { padding: 5px 8px; }
+
+/* ── Layout ─────────────────────────────────────────────────────────────── */
+main { flex: 1; display: flex; min-height: 0; }
+
+/* ── Sidebar ─────────────────────────────────────────────────────────────── */
+#sidebar {
+  width: var(--sidebar); flex-shrink: 0;
+  display: flex; flex-direction: column;
+  background: var(--panel); border-right: 1px solid var(--border);
+  min-height: 0;
+}
+.side-section { display: flex; flex-direction: column; min-height: 0; }
+.side-section + .side-section { border-top: 1px solid var(--border); }
+.side-head {
+  display: flex; align-items: center; gap: 3px;
+  padding: 5px 6px 5px 10px; background: #f8f9fb;
+  border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+.side-head .label {
+  font-size: 10.5px; font-weight: 700; letter-spacing: .07em;
+  color: var(--muted); flex: 1; text-transform: uppercase;
+}
+.file-list { flex: 1; overflow-y: auto; }
+.file-row {
+  display: flex; align-items: center; gap: 6px;
+  padding: 4px 10px; font-size: 12px; cursor: pointer; user-select: none;
+}
+.file-row:hover { background: #f1f3f7; }
+.file-row .fname { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+.file-row .fsize { font-size: 10.5px; color: var(--muted); flex-shrink: 0; }
+.file-row .fdel, .file-row .fedit {
+  visibility: hidden; border: none; background: none;
+  color: var(--muted); cursor: pointer; font-size: 11px; padding: 0 2px; flex-shrink: 0;
+}
+.file-row:hover .fdel, .file-row:hover .fedit { visibility: visible; }
+.file-row .fdel:hover { color: var(--red); }
+.file-row .fedit:hover { color: var(--accent); }
+.empty-note { padding: 10px; font-size: 11.5px; color: var(--muted); font-style: italic; }
+.side-divider {
+  height: 5px; cursor: row-resize; flex-shrink: 0;
+  background: var(--border); opacity: .5; transition: opacity .15s;
+}
+.side-divider:hover, .side-divider.dragging { background: var(--accent); opacity: 1; }
+
+/* ── Right panel ─────────────────────────────────────────────────────────── */
+#right { flex: 1; display: flex; flex-direction: column; min-height: 0; min-width: 0; }
+
+/* ── Tabs ──────────────────────────────────────────────────────────────────  */
+.tabs {
+  display: flex; align-items: center; gap: 2px;
+  padding: 0 10px; background: var(--panel);
+  border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+.tab {
+  border: none; background: none; padding: 10px 14px;
+  font-size: 13px; color: var(--muted);
+  border-bottom: 2px solid transparent; cursor: pointer;
+}
+.tab.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+.tab:hover:not(.active) { color: var(--text); }
+
+/* ── Chat tab ────────────────────────────────────────────────────────────── */
+#chat-panel { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+
+#messages {
+  flex: 1; overflow-y: auto; padding: 16px 20px;
+  display: flex; flex-direction: column; gap: 14px;
+}
+
+/* Messages */
+.msg-row { display: flex; flex-direction: column; max-width: 80%; gap: 4px; }
+.msg-row.you { align-self: flex-end; align-items: flex-end; }
+.msg-row.ai, .msg-row.system { align-self: flex-start; align-items: flex-start; }
+
+.msg-label { font-size: 11px; color: var(--muted); font-weight: 600; margin-bottom: 2px; }
+
+.msg-bubble {
+  padding: 10px 14px; border-radius: 16px; font-size: 13.5px; line-height: 1.6;
+  word-break: break-word; white-space: pre-wrap;
+  max-width: 100%;
+}
+.you .msg-bubble {
+  background: var(--you-bg); color: var(--you-text);
+  border-bottom-right-radius: 4px;
+}
+.ai .msg-bubble {
+  background: var(--ai-bg); color: var(--ai-text);
+  border: 1px solid var(--border); border-bottom-left-radius: 4px;
+}
+.msg-bubble.instruction {
+  background: var(--inst-bg); color: #0c4a6e;
+  border: 1px solid var(--inst-brd); border-radius: 10px;
+  font-size: 12.5px;
+}
+.msg-bubble.skills {
+  background: var(--skill-bg); color: #14532d;
+  border: 1px solid var(--skill-brd); border-radius: 10px;
+  font-size: 12.5px; max-height: 120px; overflow-y: auto;
+}
+.msg-bubble.error {
+  background: #fef2f2; color: var(--red);
+  border: 1px solid #fecaca; border-radius: 10px;
+}
+
+/* Instruction bubble truncation */
+.inst-preview { white-space: pre-wrap; }
+.inst-full    { white-space: pre-wrap; display: none; }
+.msg-bubble.instruction.expanded .inst-preview { display: none; }
+.msg-bubble.instruction.expanded .inst-full    { display: block; }
+.inst-toggle {
+  display: inline-block; margin-top: 6px; font-size: 11px;
+  color: #0369a1; cursor: pointer; border-bottom: 1px dashed #0369a1;
+}
+
+.msg-files { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.msg-file-tag {
+  font-size: 10.5px; background: #dcfce7; color: #166534;
+  padding: 2px 7px; border-radius: 999px; border: 1px solid #86efac;
+}
+
+/* Tool events – collapsible */
+.tool-events-wrap { margin-top: 6px; }
+.tool-events-toggle {
+  display: inline-flex; align-items: center; gap: 5px;
+  cursor: pointer; font-size: 11.5px; color: var(--muted);
+  padding: 2px 0; user-select: none;
+}
+.tool-events-toggle:hover { color: var(--text); }
+.te-arrow { font-size: 10px; display: inline-block; transition: transform .15s; }
+.tool-events-wrap.open .te-arrow { transform: rotate(90deg); }
+.tool-events { display: none; flex-direction: column; gap: 3px; margin-top: 4px; }
+.tool-events-wrap.open .tool-events { display: flex; }
+.tool-event {
+  background: var(--tool-bg); color: var(--term-text);
+  font: 11.5px/1.5 Consolas, "Courier New", monospace;
+  padding: 5px 10px; border-radius: 6px; word-break: break-all;
+}
+.tool-event .te-label { color: #4ade80; font-weight: 600; margin-right: 4px; }
+.tool-event.result .te-label { color: #67e8f9; }
+
+/* Typing indicator */
+#typing-indicator { display: none; align-self: flex-start; }
+#typing-indicator .msg-bubble {
+  background: var(--ai-bg); border: 1px solid var(--border);
+  border-bottom-left-radius: 4px; padding: 10px 16px;
+}
+.typing-dots { display: flex; gap: 4px; align-items: center; }
+.typing-dots span {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: #94a3b8; animation: bounce 1.2s infinite;
+}
+.typing-dots span:nth-child(2) { animation-delay: .2s; }
+.typing-dots span:nth-child(3) { animation-delay: .4s; }
+@keyframes bounce { 0%,80%,100% { transform: translateY(0); } 40% { transform: translateY(-6px); } }
+
+/* Input area */
+#input-area {
+  display: flex; align-items: flex-end; gap: 8px;
+  padding: 12px 16px; background: var(--panel);
+  border-top: 1px solid var(--border); flex-shrink: 0;
+}
+#chat-input {
+  flex: 1; font: 13.5px/1.5 inherit; padding: 9px 12px;
+  border: 1px solid var(--border); border-radius: 12px;
+  background: #fff; color: var(--text);
+  resize: none; outline: none; max-height: 140px;
+  min-height: 40px; overflow-y: auto;
+}
+#chat-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(37,99,235,.12); }
+#chat-input::placeholder { color: #94a3b8; }
+#send-btn {
+  padding: 9px 16px; background: var(--accent);
+  border-color: var(--accent); color: #fff; border-radius: 10px;
+  font-size: 13px; flex-shrink: 0; align-self: flex-end;
+}
+#send-btn:hover:not(:disabled) { background: var(--accent-h); }
+#cancel-btn {
+  padding: 9px 12px; border-radius: 10px; flex-shrink: 0;
+  display: none; align-self: flex-end;
+}
+.hint-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 4px 16px 8px; font-size: 11px; color: var(--muted);
+  flex-shrink: 0; background: var(--panel);
+}
+
+/* ── Batch tab ───────────────────────────────────────────────────────────── */
+#batch-panel { flex: 1; display: none; flex-direction: column; min-height: 0; }
+#batch-toolbar {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: 8px 14px; background: var(--panel);
+  border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+#batch-jobpack-row {
+  display: none; align-items: center; gap: 6px; flex-shrink: 0;
+}
+#batch-jobpack-row .label {
+  font-size: 10.5px; font-weight: 700; letter-spacing: .07em;
+  color: var(--muted); text-transform: uppercase; flex-shrink: 0;
+}
+#batch-jobpack-select { max-width: 220px; }
+#batch-metrics-chip {
+  font-size: 11.5px; color: var(--muted); background: #eef0f5;
+  padding: 3px 9px; border-radius: 999px; white-space: nowrap;
+}
+#batch-subnav {
+  display: flex; align-items: center; gap: 2px;
+  padding: 4px 10px 0; background: var(--panel);
+  border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+#batch-subnav .tab { padding: 7px 12px; font-size: 12.5px; }
+#batch-metrics-card {
+  margin: 8px 14px 0; padding: 8px 12px; font-size: 12px;
+  background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px;
+  color: #166534; display: none; flex-shrink: 0;
+}
+#batch-metrics-card.error { background: #fef2f2; border-color: #fecaca; color: #991b1b; }
+#batch-metrics-card .mrow { display: flex; justify-content: space-between; }
+#batch-log-view { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+#batch-terminal {
+  flex: 1; overflow-y: auto; padding: 12px 14px;
+  background: #0f172a; color: var(--term-text);
+  font: 12px/1.6 Consolas, "Courier New", monospace;
+  white-space: pre-wrap; word-break: break-word;
+}
+#batch-history-view { flex: 1; display: none; flex-direction: column; min-height: 0; overflow-y: auto; }
+#batch-history-body { padding: 12px 16px 16px; }
+#batch-history-placeholder { padding: 20px; color: var(--muted); font-size: 13px; font-style: italic; }
+.run-card {
+  border: 1px solid var(--border); border-radius: 10px;
+  padding: 10px 13px; margin-bottom: 9px; background: #fafbfc;
+  font-size: 12.5px; line-height: 1.65;
+}
+.run-card:last-child { margin-bottom: 0; }
+.run-card.completed { border-left: 4px solid var(--green); }
+.run-card.error { border-left: 4px solid var(--red); }
+.run-card.running { border-left: 4px solid var(--amber); }
+.run-card-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.run-card-row .label { min-width: 9.5em; color: var(--muted); font-weight: 600; flex-shrink: 0; }
+.run-card-row .value { color: var(--text); word-break: break-word; }
+
+/* ── File Viewer tab ─────────────────────────────────────────────────────── */
+#viewer-panel {
+  flex: 1; display: none; flex-direction: column; min-height: 0;
+}
+#viewer-toolbar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 14px; background: var(--panel);
+  border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+#viewer-filename {
+  font-size: 13px; font-weight: 600; flex: 1;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+#viewer-body {
+  flex: 1; overflow: auto; padding: 14px 18px;
+  font: 12.5px/1.6 Consolas, "Courier New", monospace;
+  white-space: pre-wrap; word-break: break-word; background: #fff;
+}
+#viewer-body.empty-state {
+  color: var(--muted); font-style: italic; font-size: 13px;
+  font-family: "Segoe UI", system-ui, sans-serif;
+}
+
+/* ── README tab ──────────────────────────────────────────────────────────── */
+#readme-panel {
+  flex: 1; display: none; flex-direction: column; min-height: 0;
+}
+#readme-toolbar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 14px; background: var(--panel);
+  border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+#readme-toolbar span { font-size: 13px; font-weight: 600; }
+#readme-body {
+  flex: 1; overflow: auto; padding: 14px 18px;
+  font: 12.5px/1.6 Consolas, "Courier New", monospace;
+  white-space: pre-wrap; word-break: break-word; background: #fff; color: var(--text);
+}
+#readme-body.empty-state {
+  color: var(--muted); font-style: italic; font-size: 13px;
+  font-family: "Segoe UI", system-ui, sans-serif;
+}
+
+/* ── App Logs tab ────────────────────────────────────────────────────────── */
+#logs-panel {
+  flex: 1; display: none; flex-direction: column; min-height: 0;
+}
+#logs-toolbar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 14px; background: var(--panel);
+  border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+#logs-toolbar span { font-size: 12.5px; font-weight: 600; }
+#app-terminal {
+  flex: 1; overflow-y: auto; padding: 12px 14px;
+  background: #0f172a; color: var(--term-text);
+  font: 12px/1.6 Consolas, "Courier New", monospace;
+  white-space: pre-wrap; word-break: break-word;
+}
+.log-line  { display: flex; gap: 8px; }
+.log-time  { color: #cbd5e1; flex-shrink: 0; }
+.log-info  { color: #60a5fa; }
+.log-warn  { color: #fbbf24; }
+.log-err   { color: #f87171; }
+.log-debug { color: #94a3b8; }
+.ln-tool   { color: #4ade80; }
+.ln-res    { color: #22d3ee; }
+.ln-asst   { color: #e2e8f0; }
+
+/* Agent/Input file edit modal */
+#agent-edit-modal .modal { width: 620px; max-width: 96vw; }
+#agent-modal-content {
+  width: 100%; height: 280px; resize: vertical;
+  font: 12.5px/1.6 Consolas, "Courier New", monospace;
+  border: 1px solid var(--border); border-radius: 6px;
+  padding: 8px 10px; margin-top: 4px; background: #fff; color: var(--text); outline: none;
+}
+#agent-modal-content:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(37,99,235,.12); }
+
+/* ── Modals ──────────────────────────────────────────────────────────────── */
+.modal-backdrop {
+  position: fixed; inset: 0; background: rgba(15,23,42,.45);
+  display: none; align-items: center; justify-content: center; z-index: 50;
+}
+.modal-backdrop.open { display: flex; }
+.modal {
+  background: var(--panel); border-radius: 12px; padding: 22px 24px;
+  width: 420px; max-width: 94vw; box-shadow: 0 20px 50px rgba(0,0,0,.25);
+}
+.modal h2  { font-size: 15px; margin-bottom: 12px; }
+.modal label { display: block; font-size: 12px; color: var(--muted); margin: 10px 0 4px; }
+.modal input, .modal select { width: 100%; max-width: none; }
+.modal .row  { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
+.modal .hint { font-size: 11px; color: var(--muted); margin-top: 5px; }
+.modal .check { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 13px; }
+.modal .check input { width: auto; }
+.key-hint {
+  display: inline-block; font-size: 10.5px; background: #f0f9ff;
+  color: #0369a1; border: 1px solid #bae6fd; border-radius: 4px;
+  padding: 1px 6px; font-family: Consolas, monospace;
+}
+
+/* ── Toasts ──────────────────────────────────────────────────────────────── */
+#toasts {
+  position: fixed; right: 14px; bottom: 14px;
+  display: flex; flex-direction: column; gap: 8px; z-index: 60;
+}
+.toast {
+  background: #1e293b; color: #f1f5f9; font-size: 12.5px;
+  padding: 9px 14px; border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,.25);
+  animation: slidein .2s ease; max-width: 320px;
+}
+.toast.ok    { border-left: 4px solid var(--green); }
+.toast.error { border-left: 4px solid var(--red); }
+@keyframes slidein { from { transform: translateY(10px); opacity: 0; } }
+
+#upload-input { display: none; }
+#upload-agent-input { display: none; }
+
+/* ── Toggle switch ───────────────────────────────────────────────────────── */
+.toggle-wrap {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 5px 0; gap: 10px;
+}
+.toggle-wrap .tname { font-size: 12.5px; font-weight: 600; font-family: Consolas, monospace; }
+.toggle-wrap .tdesc { font-size: 11px; color: var(--muted); flex: 1; }
+.toggle-switch {
+  position: relative; display: inline-block;
+  width: 36px; height: 20px; flex-shrink: 0;
+}
+.toggle-switch input { display: none; }
+.toggle-slider {
+  position: absolute; cursor: pointer;
+  inset: 0; background: #cbd5e1; border-radius: 20px; transition: background .2s;
+}
+.toggle-slider:before {
+  content: ""; position: absolute;
+  width: 14px; height: 14px; border-radius: 50%;
+  left: 3px; top: 3px; background: #fff; transition: transform .2s;
+  box-shadow: 0 1px 3px rgba(0,0,0,.25);
+}
+.toggle-switch input:checked + .toggle-slider { background: var(--accent); }
+.toggle-switch input:checked + .toggle-slider:before { transform: translateX(16px); }
+.toggle-switch input:disabled + .toggle-slider { opacity: .5; cursor: not-allowed; }
+
+/* ── Tools modal ─────────────────────────────────────────────────────────── */
+#tools-modal .modal { width: 500px; max-width: 96vw; }
+.tool-group-label {
+  font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
+  color: var(--muted); margin: 14px 0 4px; padding-bottom: 4px;
+  border-bottom: 1px solid var(--border);
+}
+.tool-group-label:first-child { margin-top: 4px; }
+</style>
+</head>
+<body>
+
+<!-- ── Header ────────────────────────────────────────────────────────────── -->
+<header>
+  <h1>&#129302; ADK Assistant</h1>
+  <span class="badge" id="status-badge"><span class="dot"></span><span id="status-text">idle</span></span>
+  <div class="spacer"></div>
+  <select id="provider-select" title="API provider"></select>
+  <select id="model-select" title="Model"></select>
+  <button class="icon" id="keys-btn" title="API keys">&#128273;</button>
+  <button class="icon" id="tools-btn" title="Tool permissions">&#128295;</button>
+  <button class="icon" id="settings-btn" title="Settings">&#9881;</button>
+  <button class="stop" id="stop-btn" style="display:none">&#9632; Stop</button>
+  <button class="small danger" id="reset-btn" title="Reset conversation">&#8635; Reset</button>
+</header>
+
+<main>
+  <!-- ── Sidebar ─────────────────────────────────────────────────────────── -->
+  <aside id="sidebar">
+    <!-- Agent Files -->
+    <div class="side-section" id="panel-agent" style="flex: 0 0 auto; max-height: 210px;">
+      <div class="side-head">
+        <span class="label">Agent Files</span>
+        <button class="small" id="agent-new-btn" title="New agent file">New</button>
+        <button class="small" id="agent-upload-btn" title="Upload agent file">&#8679;</button>
+      </div>
+      <div class="file-list" id="agent-file-list"></div>
+    </div>
+    <!-- Input Files -->
+    <div class="side-section" id="panel-input" style="flex: 1 1 50%;">
+      <div class="side-head">
+        <span class="label">Input Files</span>
+        <button class="small danger" id="clear-input-btn" title="Clear all input files">Clear</button>
+        <button class="small" id="new-input-btn" title="New text file">New</button>
+        <button class="small" id="upload-btn" title="Upload file">&#8679;</button>
+      </div>
+      <div class="file-list" id="input-file-list"></div>
+    </div>
+    <div class="side-divider" id="sidebar-divider"></div>
+    <!-- Output Files -->
+    <div class="side-section" id="panel-output" style="flex: 1 1 50%;">
+      <div class="side-head">
+        <span class="label">Output Files</span>
+        <button class="small danger" id="clear-output-btn" title="Clear all output files">Clear</button>
+      </div>
+      <div class="file-list" id="output-file-list"></div>
+    </div>
+  </aside>
+
+  <!-- ── Right panel ─────────────────────────────────────────────────────── -->
+  <section id="right">
+    <div class="tabs">
+      <button class="tab active" id="tab-chat">&#128172; Chat</button>
+      <button class="tab" id="tab-batch">&#9889; Batch</button>
+      <button class="tab" id="tab-viewer">&#128196; File Viewer</button>
+      <button class="tab" id="tab-logs">&#128220; App Logs</button>
+      <button class="tab" id="tab-readme">&#128214; README</button>
+      <div class="spacer"></div>
+      <button class="small" id="logs-clear-btn" style="display:none">Clear</button>
+    </div>
+
+    <!-- Chat -->
+    <div id="chat-panel">
+      <div id="messages">
+        <div id="typing-indicator">
+          <div class="msg-bubble">
+            <div class="typing-dots"><span></span><span></span><span></span></div>
+          </div>
+        </div>
+      </div>
+      <div class="hint-row">
+        <span>Type a message or <code>/skills</code> to load skill files &nbsp;·&nbsp; <kbd>Enter</kbd> or <kbd>Ctrl+Enter</kbd> to send</span>
+      </div>
+      <div id="input-area">
+        <textarea id="chat-input" rows="1" placeholder="Message the AI assistant..."></textarea>
+        <button id="cancel-btn">&#9632; Stop</button>
+        <button class="primary" id="send-btn">Send &#9654;</button>
+      </div>
+    </div>
+
+    <!-- Batch -->
+    <div id="batch-panel">
+      <div id="batch-toolbar">
+        <span class="badge" id="batch-status-badge"><span class="dot"></span><span id="batch-status-text">idle</span></span>
+        <div id="batch-jobpack-row">
+          <span class="label">Job Pack</span>
+          <select id="batch-jobpack-select" title="Select a job pack to load"></select>
+          <button id="batch-jobpack-load-btn" title="Copy the selected job pack's files into agent/ and input/">&#8681; Load</button>
+        </div>
+        <span id="batch-metrics-chip" style="display:none"></span>
+        <div class="spacer"></div>
+        <button class="primary" id="batch-run-btn">&#9654; Run</button>
+        <button class="stop" id="batch-stop-btn" style="display:none">&#9632; Stop</button>
+        <button class="small danger" id="batch-reset-btn" title="Reset batch state">&#8635; Reset</button>
+      </div>
+      <div id="batch-subnav">
+        <button class="tab active" id="batch-subtab-log">Live Log</button>
+        <button class="tab" id="batch-subtab-history">Job History</button>
+        <div class="spacer"></div>
+        <button class="small" id="batch-clear-btn" style="margin:4px 0">Clear display</button>
+      </div>
+      <div id="batch-metrics-card"></div>
+      <div id="batch-log-view">
+        <div id="batch-terminal"></div>
+      </div>
+      <div id="batch-history-view">
+        <div id="batch-history-body">
+          <div id="batch-history-placeholder">No batch runs yet. Click Run to start one against the current instruction.md and input/ files.</div>
+        </div>
+      </div>
+      <div class="hint-row">
+        <span>Batch runs instruction.md once, unattended, against the input/ folder, and writes results to output/. It does not touch the Chat conversation.</span>
+      </div>
+    </div>
+
+    <!-- File Viewer -->
+    <div id="viewer-panel">
+      <div id="viewer-toolbar">
+        <span id="viewer-filename" style="color:var(--muted);font-style:italic;font-weight:400">
+          No file selected — click a file in the sidebar to view it
+        </span>
+        <div class="spacer"></div>
+        <button class="small" id="viewer-edit-btn" style="display:none">&#9998; Edit</button>
+        <button class="small" id="viewer-copy-btn" style="display:none">&#128203; Copy</button>
+        <button class="small primary" id="viewer-download-btn" style="display:none">&#8659; Download</button>
+      </div>
+      <pre id="viewer-body" class="empty-state">Click a file in the Agent, Input, or Output panel to view its contents here. Agent and Input files can be edited; Output files are read-only.</pre>
+    </div>
+
+    <!-- App Logs -->
+    <div id="logs-panel">
+      <div id="logs-toolbar">
+        <span>Application Logs</span>
+        <div class="spacer"></div>
+      </div>
+      <div id="app-terminal"></div>
+    </div>
+
+    <!-- README -->
+    <div id="readme-panel">
+      <div id="readme-toolbar">
+        <span>README.md</span>
+        <div class="spacer"></div>
+        <button class="small" id="readme-copy-btn">&#128203; Copy</button>
+      </div>
+      <pre id="readme-body" class="empty-state">Loading README.md…</pre>
+    </div>
+  </section>
+</main>
+
+<!-- Agent/Input file edit modal (pop-up) -->
+<div class="modal-backdrop" id="agent-edit-modal">
+  <div class="modal" style="width:620px;max-width:96vw">
+    <h2 id="agent-modal-title">Edit File</h2>
+    <label id="agent-modal-name-label">Filename</label>
+    <input type="text" id="agent-modal-name" placeholder="skills.md" autocomplete="off">
+    <label>Content</label>
+    <textarea id="agent-modal-content" spellcheck="false" placeholder="Enter file content..."></textarea>
+    <div class="row">
+      <button id="agent-modal-cancel">Cancel</button>
+      <button class="primary" id="agent-modal-save">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Tools modal -->
+<div class="modal-backdrop" id="tools-modal">
+  <div class="modal" style="width:500px;max-width:96vw">
+    <h2>&#128295; Tool Permissions</h2>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:4px">
+      Toggle which tools the AI agent can use in both Chat and Batch. Changes take effect on the next run.
+    </p>
+    <div id="tools-list"></div>
+    <div class="row">
+      <button id="tools-cancel-btn">Cancel</button>
+      <button class="primary" id="tools-save-btn">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- API Key modal -->
+<div class="modal-backdrop" id="key-modal">
+  <div class="modal">
+    <h2>API Key</h2>
+    <label>Provider</label>
+    <select id="key-provider"></select>
+    <div id="key-env-hint" class="hint" style="margin-top:4px"></div>
+    <label>API key</label>
+    <input type="password" id="key-input" placeholder="sk-..." autocomplete="off">
+    <div class="hint">Held in server memory only — never written to disk or returned to the browser.</div>
+    <div id="key-baseurl-row" style="display:none">
+      <label>OpenAI-compatible base URL</label>
+      <input type="text" id="key-base-url" placeholder="http://localhost:11434/v1" autocomplete="off">
+      <div class="hint">Endpoint for the "openai-compatible" provider (Ollama, vLLM, LiteLLM proxy, etc.). The key is optional for local servers.</div>
+    </div>
+    <div class="row">
+      <button id="key-cancel-btn">Cancel</button>
+      <button class="primary" id="key-save-btn">Save key</button>
+    </div>
+  </div>
+</div>
+
+<!-- Settings modal -->
+<div class="modal-backdrop" id="settings-modal">
+  <div class="modal">
+    <h2>Settings</h2>
+    <label>Max turns (tool call loop limit per Chat message or Batch run)</label>
+    <input type="number" id="set-max-turns" min="1" max="500">
+    <label>Max output tokens</label>
+    <input type="number" id="set-max-tokens" min="1024" max="200000">
+    <label>Shell timeout (seconds)</label>
+    <input type="number" id="set-shell-timeout" min="1" max="3600">
+    <div class="check">
+      <input type="checkbox" id="set-allow-shell">
+      <label for="set-allow-shell" style="margin:0">Allow shell commands (run_command)</label>
+    </div>
+    <div class="row">
+      <button id="settings-cancel-btn">Cancel</button>
+      <button class="primary" id="settings-save-btn">Save</button>
+    </div>
+  </div>
+</div>
+
+<input type="file" id="upload-input" multiple>
+<input type="file" id="upload-agent-input" multiple>
+<div id="toasts"></div>
+
+<script>
+"use strict";
+
+const $ = (id) => document.getElementById(id);
+
+const PROVIDER_KEY_ENV = {
+  "gemini":            "GOOGLE_API_KEY",
+  "anthropic":         "ANTHROPIC_API_KEY",
+  "openai":            "OPENAI_API_KEY",
+  "openrouter":        "OPENROUTER_API_KEY",
+  "openai-compatible": "OPENAI_COMPATIBLE_API_KEY (optional)",
+};
+// vertex authenticates with Application Default Credentials + GOOGLE_CLOUD_PROJECT, not a key.
+const NO_KEY_PROVIDERS = new Set(["openai-compatible", "vertex"]);
+
+// ── State ────────────────────────────────────────────────────────────────────
+let isRunning       = false;   // chat turn in progress
+let keyStatus       = {};
+let logsOffset      = 0;
+let logsSource      = null;
+let autoScrollLogs  = true;
+let viewerFilename  = null;
+let viewerContent   = null;
+let agentModalMode  = null; // 'new' | 'edit'
+
+// Batch state
+let batchStatus      = "idle"; // idle | running | completed | error
+let batchSource      = null;
+let batchAutoScroll  = true;
+let batchPollTimer   = null;
+let batchJobs        = [];
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+async function api(path, opts = {}) {
+  const resp = await fetch(path, opts);
+  let data = null;
+  try { data = await resp.json(); } catch {}
+  if (!resp.ok) throw new Error((data && data.error) || `HTTP ${resp.status}`);
+  return data;
+}
+
+function toast(msg, kind = "ok") {
+  const el = document.createElement("div");
+  el.className = `toast ${kind}`;
+  el.textContent = msg;
+  $("toasts").appendChild(el);
+  setTimeout(() => el.remove(), 4500);
+}
+
+function fmtSize(b) {
+  if (b < 1024)    return b + " B";
+  if (b < 1048576) return (b / 1024).toFixed(1) + " KB";
+  return (b / 1048576).toFixed(1) + " MB";
+}
+
+function esc(s) {
+  return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function fileIcon(name) {
+  if (name.endsWith(".md"))                                          return "\u{1F4C4}";
+  if (name.endsWith(".py"))                                          return "\u{1F40D}";
+  if (name.endsWith(".json") || name.endsWith(".yaml") || name.endsWith(".yml")) return "\u{1F4CB}";
+  if (name.endsWith(".log"))                                         return "\u{1F4DC}";
+  if (name.endsWith(".sh"))                                          return "\u2699\uFE0F";
+  if (name.endsWith(".txt"))                                         return "\u{1F4C3}";
+  return "\u{1F4C1}";
+}
+
+// ── Status badge (Chat) ──────────────────────────────────────────────────────
+function setRunning(running) {
+  isRunning = running;
+  $("status-badge").className = `badge${running ? " running" : ""}`;
+  $("status-text").textContent = running ? "running" : "idle";
+  $("send-btn").disabled = running;
+  $("cancel-btn").style.display  = running ? "inline-block" : "none";
+  $("stop-btn").style.display    = running ? "inline-block" : "none";
+  $("reset-btn").disabled = running;
+}
+
+// ── Tabs ─────────────────────────────────────────────────────────────────────
+function showTab(tab) {
+  ["chat", "batch", "viewer", "logs", "readme"].forEach((t) => {
+    $(`tab-${t}`).classList.toggle("active", t === tab);
+    const panelId = t === "chat"   ? "chat-panel"
+                  : t === "batch"  ? "batch-panel"
+                  : t === "viewer" ? "viewer-panel"
+                  : t === "readme" ? "readme-panel"
+                  :                  "logs-panel";
+    $(panelId).style.display = t === tab ? "flex" : "none";
+  });
+  $("logs-clear-btn").style.display = tab === "logs" ? "" : "none";
+}
+$("tab-chat").onclick   = () => showTab("chat");
+$("tab-batch").onclick  = () => { showTab("batch"); refreshBatchStatus(); loadJobPacks(); };
+$("tab-viewer").onclick = () => showTab("viewer");
+$("tab-logs").onclick   = () => showTab("logs");
+$("tab-readme").onclick = () => showTab("readme");
+
+// ── File Lists ───────────────────────────────────────────────────────────────
+async function refreshFileLists() {
+  try {
+    const [inp, out, agt] = await Promise.all([
+      api("/api/input"),
+      api("/api/output"),
+      api("/api/agent"),
+    ]);
+    renderFileList("input",  inp.files);
+    renderFileList("output", out.files);
+    renderFileList("agent",  agt.files);
+  } catch {}
+}
+
+function renderFileList(kind, files) {
+  const el = $(`${kind}-file-list`);
+  el.innerHTML = "";
+  if (!files.length) {
+    const n = document.createElement("div");
+    n.className = "empty-note";
+    n.textContent = kind === "output" ? "No output yet"
+                  : kind === "agent"  ? "No agent files"
+                  :                     "No files";
+    el.appendChild(n);
+    return;
+  }
+  for (const f of files) {
+    const row  = document.createElement("div");
+    row.className = "file-row";
+    const icon = document.createElement("span");
+    icon.textContent = fileIcon(f.name);
+    const name = document.createElement("span");
+    name.className = "fname"; name.textContent = f.name; name.title = f.name;
+    const size = document.createElement("span");
+    size.className = "fsize"; size.textContent = fmtSize(f.size);
+    row.append(icon, name, size);
+
+    if (kind === "input" || kind === "agent") {
+      const edit = document.createElement("button");
+      edit.className = "fedit"; edit.innerHTML = "&#9998;"; edit.title = "Edit in pop-up";
+      edit.onclick = (ev) => { ev.stopPropagation(); openEditModal(kind, "edit", f.name); };
+      row.appendChild(edit);
+      const del = document.createElement("button");
+      del.className = "fdel"; del.innerHTML = "&#10005;"; del.title = "Delete";
+      del.onclick = (ev) => { ev.stopPropagation(); deleteFile(kind, f.name); };
+      row.appendChild(del);
+      row.onclick = () => openFileViewer(kind, f.name);
+    } else if (kind === "output") {
+      row.onclick = () => openFileViewer("output", f.name);
+    }
+
+    el.appendChild(row);
+  }
+}
+
+// ── Generic file delete (agent / input) ──────────────────────────────────────
+async function deleteFile(folder, name) {
+  if (!confirm(`Delete ${folder}/${name}?`)) return;
+  try {
+    await api(`/api/file/${folder}/${encodeURIComponent(name)}`, { method: "DELETE" });
+    refreshFileLists();
+  } catch (e) { toast(e.message, "error"); }
+}
+
+// ── Input file panel ──────────────────────────────────────────────────────────
+$("clear-input-btn").onclick = async () => {
+  if (!confirm("Delete all input files?")) return;
+  try { await api("/api/input", { method: "DELETE" }); refreshFileLists(); toast("Input cleared"); }
+  catch (e) { toast(e.message, "error"); }
+};
+
+$("new-input-btn").onclick = () => {
+  const name = prompt("New input file name (e.g. notes.txt):");
+  if (!name || !name.trim()) return;
+  saveInputFile(name.trim(), "");
+};
+
+async function saveInputFile(name, content) {
+  try {
+    await api(`/api/file/input/${encodeURIComponent(name)}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content }),
+    });
+    toast(`Saved input/${name}`);
+    refreshFileLists();
+  } catch (e) { toast(e.message, "error"); }
+}
+
+// ── File Viewer tab (unified: agent / input / output, read-only display) ─────
+let viewerFolder = null;
+
+async function openFileViewer(folder, filename) {
+  try {
+    const data = await api(`/api/file/${folder}/${encodeURIComponent(filename)}`);
+    const nameEl = $("viewer-filename");
+    nameEl.textContent  = `${folder}/${filename}`;
+    nameEl.style.color      = "var(--text)";
+    nameEl.style.fontStyle  = "normal";
+    nameEl.style.fontWeight = "600";
+    const body = $("viewer-body");
+    body.textContent = data.content;
+    body.className   = "";
+    viewerFolder   = folder;
+    viewerFilename = filename;
+    viewerContent  = data.content;
+    $("viewer-download-btn").style.display = "";
+    $("viewer-copy-btn").style.display     = "";
+    $("viewer-edit-btn").style.display     = (folder === "agent" || folder === "input") ? "" : "none";
+    showTab("viewer");
+  } catch (e) { toast(e.message, "error"); }
+}
+
+$("viewer-edit-btn").onclick = () => {
+  if (!viewerFolder || !viewerFilename) return;
+  openEditModal(viewerFolder, "edit", viewerFilename);
+};
+
+$("viewer-copy-btn").onclick = () => {
+  if (viewerContent === null) return;
+  navigator.clipboard.writeText(viewerContent)
+    .then(() => toast("Copied to clipboard"))
+    .catch(() => toast("Copy failed", "error"));
+};
+
+$("viewer-download-btn").onclick = () => {
+  if (!viewerFilename || viewerContent === null) return;
+  const blob = new Blob([viewerContent], { type: "text/plain;charset=utf-8" });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement("a");
+  a.href = url; a.download = viewerFilename;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+};
+
+// ── Agent/Input file edit modal (pop-up) ──────────────────────────────────────
+let editModalFolder = null;
+
+async function openEditModal(folder, mode, filename) {
+  agentModalMode   = mode;
+  editModalFolder  = folder;
+  const nameInput = $("agent-modal-name");
+  const content   = $("agent-modal-content");
+
+  if (mode === "new") {
+    $("agent-modal-title").textContent = folder === "agent" ? "New Agent File" : "New Input File";
+    $("agent-modal-name-label").textContent = "Filename";
+    nameInput.value    = "";
+    nameInput.readOnly = false;
+    content.value      = "";
+    content.readOnly   = false;
+  } else {
+    $("agent-modal-title").textContent = `Edit: ${folder}/${filename}`;
+    $("agent-modal-name-label").textContent = "Filename";
+    nameInput.value    = filename;
+    nameInput.readOnly = true;
+    content.readOnly   = false;
+    try {
+      const data = await api(`/api/file/${folder}/${encodeURIComponent(filename)}`);
+      content.value = data.content;
+    } catch (e) { toast(e.message, "error"); return; }
+  }
+
+  $("agent-edit-modal").classList.add("open");
+  setTimeout(() => (mode === "new" ? nameInput : content).focus(), 50);
+}
+
+$("agent-new-btn").onclick = () => {
+  const name = prompt("New agent file name (e.g. instruction.md):");
+  if (!name || !name.trim()) return;
+  saveAgentFile(name.trim(), "");
+};
+
+async function saveAgentFile(name, content) {
+  try {
+    const data = await api(`/api/file/agent/${encodeURIComponent(name)}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content }),
+    });
+    toast(`Saved agent/${name}`);
+    refreshFileLists();
+    if (name === "instruction.md" && data.display_messages) {
+      renderMessages(data.display_messages);
+    }
+  } catch (e) { toast(e.message, "error"); }
+}
+
+$("agent-modal-cancel").onclick = () => $("agent-edit-modal").classList.remove("open");
+
+$("agent-modal-save").onclick = async () => {
+  const folder  = editModalFolder || "agent";
+  const name    = $("agent-modal-name").value.trim();
+  const content = $("agent-modal-content").value;
+  if (!name) { toast("Enter a filename", "error"); return; }
+  try {
+    const data = await api(`/api/file/${folder}/${encodeURIComponent(name)}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content }),
+    });
+    $("agent-edit-modal").classList.remove("open");
+    toast(`Saved ${folder}/${name}`);
+    refreshFileLists();
+    if (folder === "agent" && name === "instruction.md" && data.display_messages) {
+      renderMessages(data.display_messages);
+    }
+    if (viewerFolder === folder && viewerFilename === name) {
+      openFileViewer(folder, name);
+    }
+  } catch (e) { toast(e.message, "error"); }
+};
+
+// ── Agent file upload ─────────────────────────────────────────────────────────
+$("agent-upload-btn").onclick = () => { $("upload-agent-input").value = ""; $("upload-agent-input").click(); };
+$("upload-agent-input").onchange = async () => {
+  const files = Array.from($("upload-agent-input").files);
+  if (!files.length) return;
+  const results = await Promise.allSettled(
+    files.map((f) => {
+      const form = new FormData();
+      form.append("file", f);
+      return api("/api/upload/agent", { method: "POST", body: form });
+    })
+  );
+  const ok = results.filter((r) => r.status === "fulfilled").length;
+  if (ok) toast(`Uploaded ${ok} agent file${ok > 1 ? "s" : ""}`);
+  results.filter((r) => r.status === "rejected").forEach((r) => toast(r.reason?.message || "Upload failed", "error"));
+  refreshFileLists();
+};
+
+// ── Chat rendering ────────────────────────────────────────────────────────────
+function scrollMessages() {
+  const m = $("messages");
+  m.scrollTop = m.scrollHeight;
+}
+
+const INST_PREVIEW_LEN = 300;
+
+function renderMessage(msg) {
+  const row = document.createElement("div");
+  row.id        = `msg-${msg.id}`;
+  row.className = `msg-row ${msg.role}`;
+
+  const label = document.createElement("div");
+  label.className = "msg-label";
+  if (msg.role === "you") {
+    if (msg.type === "instruction") label.textContent = "[You] — Instructions";
+    else if (msg.type === "skills") label.textContent = "[You] — /skills";
+    else label.textContent = "[You]";
+  } else {
+    label.textContent = "[AI]";
+  }
+  row.appendChild(label);
+
+  const bubble = document.createElement("div");
+  bubble.className = "msg-bubble";
+  if (msg.type === "instruction") bubble.classList.add("instruction");
+  else if (msg.type === "skills") bubble.classList.add("skills");
+  else if (msg.type === "error")  bubble.classList.add("error");
+
+  if (msg.type === "instruction") {
+    const text   = msg.content || "";
+    const isLong = text.length > INST_PREVIEW_LEN;
+    const preview = document.createElement("div");
+    preview.className   = "inst-preview";
+    preview.textContent = isLong ? text.slice(0, INST_PREVIEW_LEN) + "…" : text;
+    bubble.appendChild(preview);
+    if (isLong) {
+      const full = document.createElement("div");
+      full.className   = "inst-full";
+      full.textContent = text;
+      const toggle = document.createElement("span");
+      toggle.className   = "inst-toggle";
+      toggle.textContent = "Show full \u25be";
+      toggle.onclick = () => {
+        const expanded = bubble.classList.toggle("expanded");
+        toggle.textContent = expanded ? "Show less \u25b4" : "Show full \u25be";
+      };
+      bubble.appendChild(full);
+      bubble.appendChild(toggle);
+    }
+  } else if (msg.type === "skills") {
+    if (msg.files && msg.files.length) {
+      bubble.textContent = `Skills loaded: ${msg.files.join(", ")}`;
+      if (msg.content && msg.content.length > 100) {
+        const detail = document.createElement("div");
+        detail.style.cssText = "font-size:11px;color:var(--muted);margin-top:4px";
+        detail.textContent = msg.content.slice(0, 160) + (msg.content.length > 160 ? "…" : "");
+        bubble.appendChild(detail);
+      }
+    } else {
+      bubble.textContent = msg.content;
+    }
+  } else {
+    bubble.textContent = msg.content || "";
+  }
+  row.appendChild(bubble);
+
+  if (msg.tool_events && msg.tool_events.length) {
+    row.appendChild(buildToolEventsWrap(msg.tool_events));
+  }
+
+  const typing = $("typing-indicator");
+  $("messages").insertBefore(row, typing);
+  scrollMessages();
+  return row;
+}
+
+function buildToolEventsWrap(toolEvents) {
+  const n    = toolEvents.length;
+  const wrap = document.createElement("div");
+  wrap.className = "tool-events-wrap";
+
+  const toggle = document.createElement("div");
+  toggle.className = "tool-events-toggle";
+  toggle.innerHTML = `<span class="te-arrow">&#9658;</span> <span class="te-count">${n} tool call${n !== 1 ? "s" : ""}</span>`;
+  toggle.onclick = () => wrap.classList.toggle("open");
+
+  const list = document.createElement("div");
+  list.className = "tool-events";
+  for (const te of toolEvents) list.appendChild(buildToolEventRow(te));
+
+  wrap.appendChild(toggle);
+  wrap.appendChild(list);
+  return wrap;
+}
+
+function buildToolEventRow(te) {
+  const div = document.createElement("div");
+  if (te.type === "tool_use") {
+    div.className = "tool-event";
+    div.innerHTML = `<span class="te-label">[tool]</span>${esc(te.name)}(${esc(te.args || "")})`;
+  } else {
+    div.className = "tool-event result";
+    div.innerHTML = `<span class="te-label">[result]</span>${esc(te.name)}: ${esc((te.content || "").slice(0, 200))}`;
+  }
+  return div;
+}
+
+function renderMessages(msgs) {
+  const typing  = $("typing-indicator");
+  const msgs_el = $("messages");
+  [...msgs_el.children].forEach((c) => { if (c !== typing) c.remove(); });
+  for (const m of msgs) renderMessage(m);
+}
+
+// ── Streaming AI response ─────────────────────────────────────────────────────
+let currentAiRow    = null;
+let currentAiBubble = null;
+let currentToolEvents = [];
+
+function startAiMessage() {
+  currentAiRow = document.createElement("div");
+  currentAiRow.className = "msg-row ai";
+  const label = document.createElement("div");
+  label.className   = "msg-label";
+  label.textContent = "[AI]";
+  currentAiRow.appendChild(label);
+  currentAiBubble = document.createElement("div");
+  currentAiBubble.className   = "msg-bubble";
+  currentAiBubble.textContent = "";
+  currentAiRow.appendChild(currentAiBubble);
+  currentToolEvents = [];
+  const typing = $("typing-indicator");
+  $("messages").insertBefore(currentAiRow, typing);
+  $("typing-indicator").style.display = "none";
+}
+
+function appendAiDelta(text) {
+  if (!currentAiBubble) startAiMessage();
+  currentAiBubble.textContent += text;
+  scrollMessages();
+}
+
+function appendToolEvent(te) {
+  if (!currentAiRow) startAiMessage();
+  currentToolEvents.push(te);
+
+  let wrap = currentAiRow.querySelector(".tool-events-wrap");
+  if (!wrap) {
+    wrap = document.createElement("div");
+    wrap.className = "tool-events-wrap";
+    const toggle = document.createElement("div");
+    toggle.className = "tool-events-toggle";
+    toggle.innerHTML = `<span class="te-arrow">&#9658;</span> <span class="te-count">1 tool call</span>`;
+    toggle.onclick = () => wrap.classList.toggle("open");
+    const list = document.createElement("div");
+    list.className = "tool-events";
+    wrap.appendChild(toggle);
+    wrap.appendChild(list);
+    currentAiRow.appendChild(wrap);
+  } else {
+    const countEl = wrap.querySelector(".te-count");
+    if (countEl) {
+      const n = currentToolEvents.length;
+      countEl.textContent = `${n} tool call${n !== 1 ? "s" : ""}`;
+    }
+  }
+  wrap.querySelector(".tool-events").appendChild(buildToolEventRow(te));
+  scrollMessages();
+}
+
+function finaliseAiMessage() {
+  currentAiRow      = null;
+  currentAiBubble   = null;
+  currentToolEvents = [];
+}
+
+// ── Send message ─────────────────────────────────────────────────────────────
+async function sendMessage() {
+  const input   = $("chat-input");
+  const message = input.value.trim();
+  if (!message || isRunning) return;
+
+  input.value      = "";
+  input.style.height = "";
+  setRunning(true);
+  $("typing-indicator").style.display = "block";
+  scrollMessages();
+
+  try {
+    const resp = await fetch("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message }),
+    });
+
+    if (!resp.ok) {
+      const data = await resp.json().catch(() => ({}));
+      throw new Error(data.error || `HTTP ${resp.status}`);
+    }
+
+    const reader  = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = "";
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      const lines = buf.split("\n");
+      buf = lines.pop() || "";
+      for (const line of lines) {
+        if (!line.startsWith("data: ")) continue;
+        let ev;
+        try { ev = JSON.parse(line.slice(6)); } catch { continue; }
+        handleChatEvent(ev);
+      }
+    }
+  } catch (e) {
+    toast(e.message, "error");
+    $("typing-indicator").style.display = "none";
+  } finally {
+    setRunning(false);
+    $("typing-indicator").style.display = "none";
+    currentAiRow    = null;
+    currentAiBubble = null;
+    refreshFileLists();
+  }
+}
+
+function handleChatEvent(ev) {
+  switch (ev.type) {
+    case "user_message":
+      $("typing-indicator").style.display = "none";
+      renderMessage(ev.message);
+      $("typing-indicator").style.display = "block";
+      scrollMessages();
+      break;
+    case "delta":
+      $("typing-indicator").style.display = "none";
+      appendAiDelta(ev.content);
+      break;
+    case "tool_use":
+    case "tool_result":
+      appendToolEvent(ev);
+      break;
+    case "done":
+      if (currentAiBubble && ev.message) {
+        currentAiBubble.textContent = ev.message.content || "";
+      } else if (!currentAiBubble && ev.message && ev.message.content) {
+        renderMessage(ev.message);
+      }
+      finaliseAiMessage();
+      break;
+    case "error":
+      $("typing-indicator").style.display = "none";
+      if (ev.message) renderMessage(ev.message);
+      else toast(ev.content || "An error occurred", "error");
+      break;
+    case "notice":
+      toast(ev.content || "Notice", "error");
+      break;
+    case "ping":
+      break;
+  }
+}
+
+$("send-btn").onclick = sendMessage;
+
+async function cancelRun() {
+  try {
+    await api("/api/chat/cancel", { method: "POST" });
+    toast("Stop signal sent — finishing current step");
+  } catch (e) { toast(e.message, "error"); }
+}
+$("cancel-btn").onclick = cancelRun;
+$("stop-btn").onclick   = cancelRun;
+
+$("chat-input").addEventListener("keydown", (ev) => {
+  if ((ev.ctrlKey || ev.metaKey) && ev.key === "Enter") {
+    ev.preventDefault(); sendMessage();
+  } else if (ev.key === "Enter" && !ev.shiftKey && !ev.ctrlKey && !ev.metaKey) {
+    ev.preventDefault(); sendMessage();
+  }
+});
+
+$("chat-input").addEventListener("input", function () {
+  this.style.height = "auto";
+  this.style.height = Math.min(this.scrollHeight, 140) + "px";
+});
+
+// ── Reset ────────────────────────────────────────────────────────────────────
+$("reset-btn").onclick = async () => {
+  if (!confirm("Reset the conversation? All chat history will be cleared.")) return;
+  try {
+    const data = await api("/api/chat/reset", { method: "POST" });
+    renderMessages(data.display_messages || []);
+    toast("Session reset");
+  } catch (e) { toast(e.message, "error"); }
+};
+
+// ── Batch tab: sub-navigation (Live Log / Job History) ───────────────────────
+function showBatchSubtab(tab) {
+  $("batch-subtab-log").classList.toggle("active", tab === "log");
+  $("batch-subtab-history").classList.toggle("active", tab === "history");
+  $("batch-log-view").style.display     = tab === "log"     ? "flex" : "none";
+  $("batch-history-view").style.display = tab === "history" ? "flex" : "none";
+  $("batch-clear-btn").style.display    = tab === "log"     ? ""     : "none";
+}
+$("batch-subtab-log").onclick     = () => showBatchSubtab("log");
+$("batch-subtab-history").onclick = () => { showBatchSubtab("history"); loadBatchJobs(); };
+
+// ── Batch tab: status badge + metrics ─────────────────────────────────────────
+function setBatchStatusBadge(status) {
+  batchStatus = status;
+  $("batch-status-badge").className = `badge ${status}`;
+  $("batch-status-text").textContent = status;
+  $("batch-run-btn").disabled = status === "running";
+  $("batch-stop-btn").style.display = status === "running" ? "" : "none";
+  $("batch-reset-btn").disabled = status === "running";
+}
+
+function fmtTokens(n) {
+  if (n == null) return null;
+  if (n >= 1000000) return (n / 1000000).toFixed(1) + "M";
+  if (n >= 1000)    return (n / 1000).toFixed(1) + "k";
+  return String(n);
+}
+
+function batchMetricsSummary(m) {
+  const parts = [];
+  if (m.total_turns != null) parts.push(`${m.total_turns} turns`);
+  if (m.total_input_tokens != null || m.total_output_tokens != null) {
+    parts.push(`${fmtTokens(m.total_input_tokens) ?? "?"} in / ${fmtTokens(m.total_output_tokens) ?? "?"} out`);
+  }
+  if (m.total_cost_usd != null) parts.push(`$${m.total_cost_usd.toFixed(4)}`);
+  if (m.duration_seconds != null) parts.push(`${m.duration_seconds.toFixed(1)}s`);
+  return parts.join(" · ");
+}
+
+function renderBatchMetrics(m) {
+  const chip = $("batch-metrics-chip");
+  const card = $("batch-metrics-card");
+  if (!m) {
+    chip.style.display = "none";
+    card.style.display = "none";
+    return;
+  }
+  const summary = batchMetricsSummary(m);
+  chip.textContent = summary || m.status;
+  chip.style.display = "";
+  card.className = m.status === "error" ? "error" : "";
+  card.innerHTML = `
+    <div class="mrow"><span>Status</span><b>${esc(m.status)}</b></div>
+    <div class="mrow"><span>Duration</span><b>${m.duration_seconds != null ? m.duration_seconds.toFixed(1) + "s" : "—"}</b></div>
+    <div class="mrow"><span>Turns</span><b>${m.total_turns ?? "—"}</b></div>
+    <div class="mrow"><span>Model calls</span><b>${m.llm_calls ?? "—"}</b></div>
+    <div class="mrow"><span>Tokens in / out</span><b>${m.total_input_tokens ?? "—"} / ${m.total_output_tokens ?? "—"}</b></div>
+    <div class="mrow"><span>Est. cost</span><b>${m.total_cost_usd != null ? "$" + m.total_cost_usd.toFixed(4) : "—"}</b></div>
+    <div class="mrow"><span>Guardrail blocks / injection flags</span><b>${m.guardrail_blocks ?? 0} / ${m.injection_flags ?? 0}</b></div>
+    <div class="mrow"><span>Output files</span><b>${m.output_files ?? "—"}</b></div>`;
+  card.style.display = "block";
+}
+
+// ── Batch tab: terminal ───────────────────────────────────────────────────────
+function batchLineClass(msg) {
+  if (/\[ERROR\]|BLOCKED|FATAL/.test(msg)) return "log-err";
+  if (/\[guardrail\]/.test(msg))          return "log-warn";
+  if (/\[WARNING\]/.test(msg))             return "log-warn";
+  if (/\[tool_use\]/.test(msg))            return "ln-tool";
+  if (/\[result\]/.test(msg))              return "ln-res";
+  if (/\[assistant\]|\[INFO\]|\[guardrail\]/.test(msg)) return "ln-asst";
+  return "log-info";
+}
+
+function appendBatchLine(entry) {
+  const term = $("batch-terminal");
+  const div  = document.createElement("div");
+  div.className = "log-line";
+  const t = document.createElement("span");
+  t.className   = "log-time";
+  t.textContent = (entry.time || "").slice(11, 19);
+  const m = document.createElement("span");
+  m.className   = batchLineClass(entry.msg || "");
+  m.textContent = entry.msg || "";
+  div.append(t, m);
+  term.appendChild(div);
+  if (batchAutoScroll) term.scrollTop = term.scrollHeight;
+}
+
+$("batch-terminal").addEventListener("scroll", () => {
+  const t = $("batch-terminal");
+  batchAutoScroll = t.scrollTop + t.clientHeight >= t.scrollHeight - 30;
+});
+$("batch-clear-btn").onclick = () => { $("batch-terminal").innerHTML = ""; };
+
+function connectBatchLogs(offset = 0) {
+  if (batchSource) batchSource.close();
+  batchSource = new EventSource(`/api/batch/logs?offset=${offset}`);
+  batchSource.onmessage = (ev) => {
+    let data;
+    try { data = JSON.parse(ev.data); } catch { return; }
+    if (data.done) {
+      batchSource.close();
+      batchSource = null;
+      onBatchFinished(data.status);
+    } else {
+      appendBatchLine(data);
+    }
+  };
+  batchSource.onerror = () => {};
+}
+
+function startBatchPolling() {
+  stopBatchPolling();
+  batchPollTimer = setInterval(async () => {
+    const snap = await refreshBatchStatus();
+    refreshFileLists();
+    if (!snap || snap.status !== "running") stopBatchPolling();
+  }, 2000);
+}
+function stopBatchPolling() {
+  if (batchPollTimer) { clearInterval(batchPollTimer); batchPollTimer = null; }
+}
+
+function onBatchFinished(status) {
+  stopBatchPolling();
+  refreshBatchStatus();
+  refreshFileLists();
+  loadBatchJobs();
+  toast(status === "completed" ? "Batch run completed" : "Batch run failed — check the log",
+        status === "completed" ? "ok" : "error");
+}
+
+async function refreshBatchStatus() {
+  try {
+    const snap = await api("/api/batch/status?offset=999999");
+    setBatchStatusBadge(snap.status);
+    renderBatchMetrics(snap.metrics);
+    if (snap.status === "running" && batchStatus !== "running") {
+      showBatchSubtab("log");
+      connectBatchLogs(0);
+      startBatchPolling();
+    }
+    return snap;
+  } catch { return null; }
+}
+
+// ── Batch tab: job history ────────────────────────────────────────────────────
+function fmtRunTime(iso) {
+  if (!iso) return "—";
+  try {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return iso;
+    return d.toISOString().replace("T", " ").slice(0, 19) + " UTC";
+  } catch { return iso; }
+}
+function fmtDuration(seconds) {
+  if (seconds == null) return "—";
+  if (seconds < 60) return `${seconds.toFixed(1)}s`;
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.round(seconds % 60);
+  return `${mins}m ${secs}s`;
+}
+function fmtCount(n) {
+  if (n == null) return "—";
+  return Number(n).toLocaleString();
+}
+
+function renderJobCard(job) {
+  const rows = [
+    ["Provider/Model", `${job.provider || "—"} / ${job.model || "—"}`],
+    ["Time/Duration", `${fmtRunTime(job.run_id)} / ${fmtDuration(job.duration_seconds)}`],
+    ["Turns/Tokens in/out", `${fmtCount(job.total_turns)} / ${fmtCount(job.total_input_tokens)} / ${fmtCount(job.total_output_tokens)}`],
+    ["Output files", fmtCount(job.output_files)],
+  ];
+  const status = job.status || "unknown";
+  let html = `<article class="run-card ${esc(status)}">`;
+  for (const [label, value] of rows) {
+    html += `<div class="run-card-row"><span class="label">${label}:</span><span class="value">${esc(String(value))}</span></div>`;
+  }
+  html += "</article>";
+  return html;
+}
+
+function renderBatchJobs(jobs) {
+  const body = $("batch-history-body");
+  if (!jobs.length) {
+    body.innerHTML = '<div id="batch-history-placeholder">No batch runs yet. Click Run to start one against the current instruction.md and input/ files.</div>';
+    return;
+  }
+  body.innerHTML = [...jobs].reverse().map(renderJobCard).join("");
+}
+
+async function loadBatchJobs() {
+  try {
+    const data = await api("/api/batch/jobs");
+    batchJobs = data.jobs || [];
+    renderBatchJobs(batchJobs);
+  } catch {
+    if (!batchJobs.length) {
+      $("batch-history-body").innerHTML = '<div id="batch-history-placeholder">Could not load job history.</div>';
+    }
+  }
+}
+
+// ── Batch tab: job pack loader ────────────────────────────────────────────────
+async function loadJobPacks() {
+  try {
+    const data = await api("/api/jobpacks");
+    const sel = $("batch-jobpack-select");
+    sel.innerHTML = "";
+    if (!data.packs || !data.packs.length) {
+      $("batch-jobpack-row").style.display = "none";
+      return;
+    }
+    for (const p of data.packs) {
+      const opt = document.createElement("option");
+      opt.value = p.name;
+      opt.textContent = `${p.name}  (${p.agent_files.length} agent, ${p.input_files.length} input)`;
+      sel.appendChild(opt);
+    }
+    $("batch-jobpack-row").style.display = "flex";
+  } catch {
+    $("batch-jobpack-row").style.display = "none";
+  }
+}
+
+$("batch-jobpack-load-btn").onclick = async () => {
+  const pack = $("batch-jobpack-select").value;
+  if (!pack) return;
+  if (!confirm(`Load job pack "${pack}"?\nThis will replace the current agent/ and input/ files.`)) return;
+  try {
+    const data = await api("/api/jobpacks/load", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pack, clear: true }),
+    });
+    const a = data.copied.agent.length, i = data.copied.input.length;
+    toast(`Loaded "${pack}": ${a} agent file${a !== 1 ? "s" : ""}, ${i} input file${i !== 1 ? "s" : ""} — click Run when ready`);
+    refreshFileLists();
+    try {
+      const sess = await api("/api/session");
+      renderMessages(sess.display_messages || []);
+    } catch {}
+  } catch (e) { toast(e.message, "error"); }
+};
+
+// ── Batch tab: run / stop / reset ─────────────────────────────────────────────
+$("batch-run-btn").onclick = async () => {
+  try {
+    await api("/api/batch/run", { method: "POST" });
+    $("batch-terminal").innerHTML = "";
+    batchAutoScroll = true;
+    setBatchStatusBadge("running");
+    showBatchSubtab("log");
+    connectBatchLogs(0);
+    startBatchPolling();
+  } catch (e) { toast(e.message, "error"); }
+};
+
+$("batch-stop-btn").onclick = async () => {
+  try {
+    await api("/api/batch/stop", { method: "POST" });
+    toast("Stop signal sent — waiting for the batch run to finish its current step");
+  } catch (e) { toast(e.message, "error"); }
+};
+
+$("batch-reset-btn").onclick = async () => {
+  try {
+    await api("/api/batch/reset", { method: "POST" });
+    $("batch-terminal").innerHTML = "";
+    renderBatchMetrics(null);
+    setBatchStatusBadge("idle");
+  } catch (e) { toast(e.message, "error"); }
+};
+
+// ── App Logs tab ─────────────────────────────────────────────────────────────
+function connectAppLogs() {
+  if (logsSource) logsSource.close();
+  logsSource = new EventSource(`/api/app-logs?offset=${logsOffset}`);
+  logsSource.onmessage = (ev) => {
+    try { const entry = JSON.parse(ev.data); appendLogLine(entry); logsOffset++; } catch {}
+  };
+  logsSource.onerror = () => {};
+}
+
+function appendLogLine(entry) {
+  const term = $("app-terminal");
+  const div  = document.createElement("div");
+  div.className = "log-line";
+  const t = document.createElement("span");
+  t.className   = "log-time";
+  t.textContent = (entry.time || "").slice(11, 19);
+  const m   = document.createElement("span");
+  const lvl = (entry.level || "").toUpperCase();
+  m.className = lvl === "ERROR" || lvl === "CRITICAL" ? "log-err"
+              : lvl === "WARNING"                      ? "log-warn"
+              : lvl === "DEBUG"                        ? "log-debug"
+              :                                          "log-info";
+  m.textContent = entry.msg || "";
+  div.append(t, m);
+  term.appendChild(div);
+  if (autoScrollLogs) term.scrollTop = term.scrollHeight;
+}
+
+$("app-terminal").addEventListener("scroll", () => {
+  const t = $("app-terminal");
+  autoScrollLogs = t.scrollTop + t.clientHeight >= t.scrollHeight - 30;
+});
+
+$("logs-clear-btn").onclick = () => {
+  if ($("tab-logs").classList.contains("active")) $("app-terminal").innerHTML = "";
+};
+
+// ── README tab ───────────────────────────────────────────────────────────────
+let readmeContent = null;
+
+async function loadReadme() {
+  try {
+    const data = await api("/api/readme");
+    const body = $("readme-body");
+    if (data.found) {
+      readmeContent = data.content;
+      body.textContent = data.content;
+      body.className   = "";
+    } else {
+      readmeContent = null;
+      body.textContent = "No README.md found in the project root.";
+      body.className   = "empty-state";
+    }
+  } catch {
+    $("readme-body").textContent = "Could not load README.md.";
+    $("readme-body").className   = "empty-state";
+  }
+}
+
+$("readme-copy-btn").onclick = () => {
+  if (readmeContent === null) return;
+  navigator.clipboard.writeText(readmeContent)
+    .then(() => toast("Copied to clipboard"))
+    .catch(() => toast("Copy failed", "error"));
+};
+
+// ── File upload (input) ───────────────────────────────────────────────────────
+$("upload-btn").onclick = () => { $("upload-input").value = ""; $("upload-input").click(); };
+$("upload-input").onchange = async () => {
+  const files = Array.from($("upload-input").files);
+  if (!files.length) return;
+  const results = await Promise.allSettled(
+    files.map((f) => {
+      const form = new FormData();
+      form.append("file", f);
+      return api("/api/upload/input", { method: "POST", body: form });
+    })
+  );
+  const ok = results.filter((r) => r.status === "fulfilled").length;
+  if (ok) toast(`Uploaded ${ok} file${ok > 1 ? "s" : ""}`);
+  results.filter((r) => r.status === "rejected").forEach((r) => toast(r.reason?.message || "Upload failed", "error"));
+  refreshFileLists();
+};
+
+$("clear-output-btn").onclick = async () => {
+  if (!confirm("Delete all output files?")) return;
+  try {
+    await api("/api/output", { method: "DELETE" });
+    refreshFileLists();
+    renderBatchMetrics(null);
+    toast("Output cleared");
+  } catch (e) { toast(e.message, "error"); }
+};
+
+// ── Provider / Model ──────────────────────────────────────────────────────────
+async function loadProviders() {
+  const data = await api("/api/providers");
+  const sel  = $("provider-select");
+  sel.innerHTML = "";
+  for (const p of data.providers) {
+    const opt = document.createElement("option");
+    opt.value = p; opt.textContent = p;
+    if (p === data.current) opt.selected = true;
+    sel.appendChild(opt);
+  }
+}
+
+async function loadModels() {
+  const provider = $("provider-select").value;
+  const sel = $("model-select");
+  sel.innerHTML = "<option>loading...</option>";
+  try {
+    const [md, cur] = await Promise.all([
+      api(`/api/models?provider=${encodeURIComponent(provider)}`),
+      api("/api/model"),
+    ]);
+    sel.innerHTML = "";
+    const models = (md.models || []).sort((a, b) => (a.name || a.id).localeCompare(b.name || b.id));
+    if (!models.length) {
+      const opt = document.createElement("option");
+      opt.value = cur.model; opt.textContent = `${cur.model} (list unavailable)`;
+      sel.appendChild(opt);
+      return;
+    }
+    let found = false;
+    for (const m of models) {
+      const opt = document.createElement("option");
+      opt.value = m.id; opt.textContent = m.name || m.id;
+      if (m.id === cur.model) { opt.selected = true; found = true; }
+      sel.appendChild(opt);
+    }
+    if (!found && models.length) {
+      sel.selectedIndex = 0;
+      await api("/api/model", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ model: sel.value }),
+      });
+    }
+  } catch { sel.innerHTML = "<option>unavailable</option>"; }
+}
+
+$("provider-select").onchange = async () => {
+  try {
+    await api("/api/provider", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ provider: $("provider-select").value }),
+    });
+    await checkKeys();
+    await loadModels();
+  } catch (e) { toast(e.message, "error"); }
+};
+
+$("model-select").onchange = async () => {
+  try {
+    await api("/api/model", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ model: $("model-select").value }),
+    });
+  } catch (e) { toast(e.message, "error"); }
+};
+
+// ── API Key modal ─────────────────────────────────────────────────────────────
+async function checkKeys(autoOpen = true) {
+  keyStatus = await api("/api/keys");
+  const provider = $("provider-select").value || "anthropic";
+  if (autoOpen && !NO_KEY_PROVIDERS.has(provider) && !keyStatus[provider]) openKeyModal(provider);
+}
+
+function updateKeyEnvHint(provider) {
+  const hint   = $("key-env-hint");
+  const envVar = PROVIDER_KEY_ENV[provider];
+  hint.innerHTML = envVar ? `Env var: <span class="key-hint">${envVar}</span>` : "";
+  $("key-baseurl-row").style.display = provider === "openai-compatible" ? "" : "none";
+}
+
+async function openKeyModal(provider) {
+  const sel = $("key-provider");
+  sel.innerHTML = "";
+  for (const p of Object.keys(keyStatus)) {
+    const opt = document.createElement("option");
+    opt.value = p; opt.textContent = keyStatus[p] ? `${p} \u2713` : p;
+    if (p === provider) opt.selected = true;
+    sel.appendChild(opt);
+  }
+  updateKeyEnvHint(provider);
+  $("key-input").value = "";
+  try { $("key-base-url").value = (await api("/api/settings")).openai_base_url; } catch {}
+  $("key-modal").classList.add("open");
+  $("key-input").focus();
+}
+
+$("key-provider").onchange = () => updateKeyEnvHint($("key-provider").value);
+$("keys-btn").onclick      = async () => { await checkKeys(false); openKeyModal($("provider-select").value); };
+$("key-cancel-btn").onclick = () => $("key-modal").classList.remove("open");
+$("key-save-btn").onclick   = async () => {
+  const provider = $("key-provider").value;
+  const key      = $("key-input").value.trim();
+  const isCompat = provider === "openai-compatible";
+  if (!key && !isCompat) { toast("Enter a key first", "error"); return; }
+  try {
+    if (isCompat) {
+      await api("/api/settings", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ openai_base_url: $("key-base-url").value }),
+      });
+    }
+    if (key) {
+      await api("/api/keys", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ provider, key }),
+      });
+    }
+    $("key-modal").classList.remove("open");
+    $("key-input").value = "";
+    toast(isCompat ? "Endpoint saved" : `API key saved for ${provider}`);
+    await checkKeys(false);
+    await loadModels();
+  } catch (e) { toast(e.message, "error"); }
+};
+
+// ── Tools modal ───────────────────────────────────────────────────────────────
+let toolsSnapshot = {}; // name → enabled (at time modal opened)
+
+$("tools-btn").onclick = async () => {
+  try {
+    const data = await api("/api/tools");
+    const list = $("tools-list");
+    list.innerHTML = "";
+    toolsSnapshot = {};
+
+    let currentGroup = null;
+    for (const t of data.tools) {
+      toolsSnapshot[t.name] = t.enabled;
+
+      if (t.group !== currentGroup) {
+        currentGroup = t.group;
+        const lbl = document.createElement("div");
+        lbl.className = "tool-group-label";
+        lbl.textContent = t.group;
+        list.appendChild(lbl);
+      }
+
+      const wrap = document.createElement("div");
+      wrap.className = "toggle-wrap";
+
+      const info = document.createElement("div");
+      info.style.cssText = "display:flex;flex-direction:column;gap:1px;flex:1;min-width:0";
+
+      const nameEl = document.createElement("span");
+      nameEl.className = "tname";
+      nameEl.textContent = t.name;
+
+      const descEl = document.createElement("span");
+      descEl.className = "tdesc";
+      descEl.textContent = t.desc;
+
+      info.appendChild(nameEl);
+      info.appendChild(descEl);
+
+      const sw = document.createElement("label");
+      sw.className = "toggle-switch";
+      sw.title = t.enabled ? "Enabled" : "Disabled";
+
+      const inp = document.createElement("input");
+      inp.type = "checkbox";
+      inp.id = `tool-toggle-${t.name}`;
+      inp.checked = t.enabled;
+      inp.dataset.toolName = t.name;
+
+      const slider = document.createElement("span");
+      slider.className = "toggle-slider";
+
+      sw.appendChild(inp);
+      sw.appendChild(slider);
+
+      wrap.appendChild(info);
+      wrap.appendChild(sw);
+      list.appendChild(wrap);
+    }
+
+    $("tools-modal").classList.add("open");
+  } catch (e) { toast(e.message, "error"); }
+};
+
+$("tools-cancel-btn").onclick = () => $("tools-modal").classList.remove("open");
+
+$("tools-save-btn").onclick = async () => {
+  const payload = {};
+  $("tools-list").querySelectorAll("input[type=checkbox]").forEach((inp) => {
+    payload[inp.dataset.toolName] = inp.checked;
+  });
+  try {
+    await api("/api/tools", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    $("tools-modal").classList.remove("open");
+    const offCount = Object.values(payload).filter((v) => !v).length;
+    toast(offCount ? `Tools saved (${offCount} disabled)` : "All tools enabled");
+  } catch (e) { toast(e.message, "error"); }
+};
+
+// ── Settings modal ────────────────────────────────────────────────────────────
+$("settings-btn").onclick = async () => {
+  try {
+    const s = await api("/api/settings");
+    $("set-max-turns").value   = s.max_turns;
+    $("set-max-tokens").value  = s.max_output_tokens;
+    $("set-shell-timeout").value = s.shell_timeout;
+    $("set-allow-shell").checked = s.allow_shell;
+    $("settings-modal").classList.add("open");
+  } catch (e) { toast(e.message, "error"); }
+};
+$("settings-cancel-btn").onclick = () => $("settings-modal").classList.remove("open");
+$("settings-save-btn").onclick   = async () => {
+  try {
+    await api("/api/settings", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        max_turns:        parseInt($("set-max-turns").value,   10),
+        max_output_tokens: parseInt($("set-max-tokens").value, 10),
+        shell_timeout:    parseInt($("set-shell-timeout").value, 10),
+        allow_shell:      $("set-allow-shell").checked,
+      }),
+    });
+    $("settings-modal").classList.remove("open");
+    toast("Settings saved");
+  } catch (e) { toast(e.message, "error"); }
+};
+
+// ── Resizable sidebar divider (Input / Output) ────────────────────────────────
+(function setupSidebarDivider() {
+  const divider  = $("sidebar-divider");
+  const topPanel = $("panel-input");
+  const botPanel = $("panel-output");
+  if (!divider || !topPanel || !botPanel) return;
+
+  divider.addEventListener("mousedown", (ev) => {
+    ev.preventDefault();
+    divider.classList.add("dragging");
+    const startY = ev.clientY;
+    const topH   = topPanel.getBoundingClientRect().height;
+    const botH   = botPanel.getBoundingClientRect().height;
+
+    const onMove = (mv) => {
+      const delta  = mv.clientY - startY;
+      const newTop = Math.max(60, topH + delta);
+      const newBot = Math.max(60, botH - delta);
+      topPanel.style.flex = `0 0 ${newTop}px`;
+      botPanel.style.flex = `0 0 ${newBot}px`;
+    };
+    const onUp = () => {
+      divider.classList.remove("dragging");
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup",   onUp);
+    };
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup",   onUp);
+  });
+})();
+
+// ── Init ─────────────────────────────────────────────────────────────────────
+(async function init() {
+  showTab("chat");
+  showBatchSubtab("log");
+
+  try {
+    const data = await api("/api/session");
+    renderMessages(data.display_messages || []);
+    if (data.status === "running") setRunning(true);
+  } catch {}
+
+  await loadProviders();
+  await Promise.all([refreshFileLists(), loadModels()]);
+  await checkKeys();
+
+  connectAppLogs();
+  loadReadme();
+
+  const snap = await refreshBatchStatus();
+  if (snap && snap.status === "running") {
+    showBatchSubtab("log");
+    connectBatchLogs(0);
+    startBatchPolling();
+  }
+  loadJobPacks();
+})();
+</script>
+</body>
+</html>

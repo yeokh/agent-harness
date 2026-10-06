@@ -1,0 +1,16 @@
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: adk-assistant-oauth
+  labels:
+    app: adk-assistant
+spec:
+  to:
+    kind: Service
+    name: adk-assistant-oauth
+    weight: 100
+  port:
+    targetPort: https
+  tls:
+    termination: reencrypt
+    insecureEdgeTerminationPolicy: Redirect

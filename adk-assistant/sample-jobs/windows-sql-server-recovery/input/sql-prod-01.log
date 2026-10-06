@@ -1,0 +1,59 @@
+===== Host: sql-prod-01 (10.10.5.21) =====
+===== SQL Server Instance: MSSQLSERVER (default) — SQL Server 2019 (15.0.4316) =====
+===== Log extract: SQL Server ERRORLOG + Windows Application Event Log =====
+===== Collected: 2026-06-20 06:15:00 UTC =====
+
+-- SQL Server ERRORLOG --
+2026-06-20 03:41:12.18 spid74       Error: 1101, Severity: 17, State: 2.
+2026-06-20 03:41:12.18 spid74       Could not allocate a new page for database 'tempdb' because of insufficient disk space in filegroup 'PRIMARY'. Create the necessary space by dropping objects in the filegroup, adding additional files to the filegroup, or setting autogrowth on for existing files in the filegroup.
+2026-06-20 03:41:12.19 spid74       Error: 3959, Severity: 17, State: 1.
+2026-06-20 03:41:12.19 spid74       The version store for the database 'tempdb' has reached its maximum size of 8192 MB. A long-running transaction or transactions with large volumes of version records are preventing version store cleanup. For more information on the version store, see the SQL Server documentation.
+2026-06-20 03:41:14.22 spid88       Error: 1101, Severity: 17, State: 2.
+2026-06-20 03:41:14.22 spid88       Could not allocate a new page for database 'tempdb' because of insufficient disk space in filegroup 'PRIMARY'.
+2026-06-20 03:41:14.51 spid112      Error: 1101, Severity: 17, State: 2.
+2026-06-20 03:41:14.51 spid112      Could not allocate a new page for database 'tempdb' because of insufficient disk space in filegroup 'PRIMARY'.
+2026-06-20 03:41:20.04 spid74       Error: 3971, Severity: 16, State: 2.
+2026-06-20 03:41:20.04 spid74       The server failed to resume the transaction. Desc:3400000025.
+2026-06-20 03:41:20.09 spid88       Error: 1101, Severity: 17, State: 2.
+2026-06-20 03:41:20.09 spid88       Could not allocate a new page for database 'tempdb' because of insufficient disk space in filegroup 'PRIMARY'.
+
+-- Session consuming TempDB (sys.dm_db_session_space_usage at time of collection) --
+session_id  user_objects_alloc_page_count  internal_objects_alloc_page_count  login_name    program_name
+----------  -----------------------------  ---------------------------------  ----------    ------------
+74          0                              1048576                            ReportSvc     SSRS ReportingService
+88          0                              12800                              AppUser       AppServer-WebAPI
+112         0                              8192                               AppUser       AppServer-WebAPI
+118         0                              256                                sa            Microsoft SQL Server Management Studio
+
+-- TempDB file state (sys.master_files) --
+name          physical_name                       size_mb  max_size_mb  growth  is_percent_growth  state_desc
+-----------   ---------------------------------   -------  -----------  ------  -----------------  ----------
+tempdev       D:\SQLData\tempdb.mdf               8192     8192         0       0                  ONLINE
+templog       D:\SQLLog\templog.ldf               1024     1024         0       0                  ONLINE
+-- Note: autogrowth is DISABLED on both files (growth=0). Max size equals current size. --
+-- Note: D:\SQLData has 42 GB free. D:\SQLLog has 18 GB free. --
+
+-- Windows Application Event Log --
+Log Name:      Application
+Source:        MSSQLSERVER
+Event ID:      9002
+Level:         Error
+Date:          2026-06-20 03:41:12
+Message:       The transaction log for database 'tempdb' is full due to 'ACTIVE_TRANSACTION'.
+
+Log Name:      Application
+Source:        MSSQLSERVER
+Event ID:      1101
+Level:         Error
+Date:          2026-06-20 03:41:12
+Message:       Could not allocate a new page for database 'tempdb' because of insufficient disk space in filegroup 'PRIMARY'.
+
+-- ReportSvc spid 74 query (sys.dm_exec_requests + sys.dm_exec_sql_text) --
+-- Session 74 has been running for 4h 22m with an open transaction --
+-- It is executing a large SSRS report that creates intermediate temp tables --
+-- The session is still active (status = running) --
+open_transaction_count: 1
+transaction_isolation_level: READ COMMITTED
+wait_type: PAGEIOLATCH_EX
+wait_time_ms: 841234
+last_wait_type: PAGEIOLATCH_EX

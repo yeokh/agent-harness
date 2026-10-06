@@ -1,0 +1,57 @@
+===== Host: rhel-prod-01 (192.168.10.11) =====
+===== Log extract: /var/log/messages + journalctl =====
+===== Collected: 2026-06-20 03:47:12 UTC =====
+
+Jun 20 00:01:03 rhel-prod-01 systemd-journald[812]: Vacuuming done, freed 0B of archived journals from /var/log/journal/a1b2c3d4e5f6.
+Jun 20 00:15:44 rhel-prod-01 auditd[1021]: Audit daemon rotating log files
+Jun 20 00:15:44 rhel-prod-01 auditd[1021]: Unable to open /var/log/audit/audit.log.1 (No space left on device)
+Jun 20 00:15:44 rhel-prod-01 auditd[1021]: Audit daemon is low on disk space for logging
+Jun 20 00:15:44 rhel-prod-01 auditd[1021]: Audit daemon is suspending logging due to low disk space.
+Jun 20 00:16:01 rhel-prod-01 kernel: EXT4-fs error (device sda3): ext4_find_entry:1455: inode #262147: comm auditd: reading directory lblock 0
+Jun 20 00:16:01 rhel-prod-01 kernel: EXT4-fs error (device sda3): ext4_journal_check_start:61: Detected aborted journal
+Jun 20 00:16:01 rhel-prod-01 kernel: EXT4-fs (sda3): Remounting filesystem read-only
+Jun 20 00:16:04 rhel-prod-01 systemd[1]: var.mount: Directory /var is not empty, adding to /run/mount/propagate-change list
+Jun 20 00:16:12 rhel-prod-01 systemd-journald[812]: Failed to write data to /var/log/journal/: No space left on device
+Jun 20 00:16:12 rhel-prod-01 systemd-journald[812]: Failed to write data to /var/log/journal/: No space left on device
+Jun 20 00:16:12 rhel-prod-01 systemd-journald[812]: Failed to write data to /var/log/journal/: No space left on device
+Jun 20 00:16:15 rhel-prod-01 rsyslogd[1103]: file '/var/log/messages': write error, suspended for 60 seconds. [v8.2102.0 try https://www.rsyslog.com/e/2027 ]
+Jun 20 00:17:01 rhel-prod-01 CROND[28341]: (root) CMD (run-parts /etc/cron.hourly)
+Jun 20 00:17:01 rhel-prod-01 run-parts[28342]: /etc/cron.hourly/0anacron: error writing to /var/log/cron: No space left on device
+Jun 20 00:18:00 rhel-prod-01 systemd[1]: auditd.service: Main process exited, code=exited, status=1/FAILURE
+Jun 20 00:18:00 rhel-prod-01 systemd[1]: auditd.service: Failed with result 'exit-code'.
+Jun 20 00:18:01 rhel-prod-01 systemd[1]: Failed to start Security Auditing Service.
+Jun 20 01:00:22 rhel-prod-01 systemd-logind[894]: Error writing /run/systemd/sessions/1234.ref: No space left on device
+
+-- Disk usage at time of collection --
+Filesystem              Size  Used Avail Use% Mounted on
+/dev/sda1               20G  4.1G   16G  21% /
+/dev/sda3               40G   40G     0 100% /var
+/dev/sda2              100G   23G   77G  24% /home
+tmpfs                   16G     0   16G   0% /dev/shm
+
+-- Largest directories under /var --
+36G     /var/log/audit
+2.1G    /var/log/messages-archive
+1.0G    /var/log/httpd
+800M    /var/log/journal
+
+-- /var/log/audit detail --
+-rw-------. 1 root root 2.0G Jun 19 22:41 /var/log/audit/audit.log
+-rw-------. 1 root root 2.0G Jun 18 14:00 /var/log/audit/audit.log.1
+-rw-------. 1 root root 2.0G Jun 17 09:15 /var/log/audit/audit.log.2
+-rw-------. 1 root root 2.0G Jun 16 04:22 /var/log/audit/audit.log.3
+-rw-------. 1 root root 2.0G Jun 15 21:05 /var/log/audit/audit.log.4
+-rw-------. 1 root root 2.0G Jun 14 12:10 /var/log/audit/audit.log.5
+-rw-------. 1 root root 2.0G Jun 13 07:33 /var/log/audit/audit.log.6
+-rw-------. 1 root root 2.0G Jun 12 19:50 /var/log/audit/audit.log.7
+-rw-------. 1 root root 2.0G Jun 11 03:14 /var/log/audit/audit.log.8
+-rw-------. 1 root root 2.0G Jun 10 11:28 /var/log/audit/audit.log.9
+-rw-------. 1 root root 2.0G Jun 09 08:45 /var/log/audit/audit.log.10
+-rw-------. 1 root root 2.0G Jun 08 16:00 /var/log/audit/audit.log.11
+-rw-------. 1 root root 2.0G Jun 07 22:17 /var/log/audit/audit.log.12
+-rw-------. 1 root root 2.0G Jun 06 14:55 /var/log/audit/audit.log.13
+-rw-------. 1 root root 2.0G Jun 05 06:30 /var/log/audit/audit.log.14
+-rw-------. 1 root root 2.0G Jun 04 18:08 /var/log/audit/audit.log.15
+-rw-------. 1 root root 2.0G Jun 03 09:42 /var/log/audit/audit.log.16
+-rw-------. 1 root root 2.0G Jun 02 00:20 /var/log/audit/audit.log.17
+-- Note: max_log_file_action=KEEP_LOGS in /etc/audit/auditd.conf (never rotating old files) --

@@ -1,0 +1,57 @@
+===== Host: rhel-prod-02 (192.168.10.12) =====
+===== Log extract: dmesg + journalctl -p err =====
+===== Collected: 2026-06-20 04:15:33 UTC =====
+
+Jun 19 21:03:14 rhel-prod-02 kernel: java invoked oom-killer: gfp_mask=0x1100cca(GFP_HIGHUSER_MOVABLE|__GFP_ZERO), order=0, oom_score_adj=0
+Jun 19 21:03:14 rhel-prod-02 kernel: CPU: 3 PID: 14482 Comm: java Not tainted 5.14.0-284.11.1.el9_2.x86_64
+Jun 19 21:03:14 rhel-prod-02 kernel: Mem-Info:
+Jun 19 21:03:14 rhel-prod-02 kernel: active_anon:1942310 inactive_anon:8503 isolated_anon:0
+Jun 19 21:03:14 rhel-prod-02 kernel: active_file:1231 inactive_file:2109 isolated_file:0
+Jun 19 21:03:14 rhel-prod-02 kernel: unevictable:6714 dirty:0 writeback:0
+Jun 19 21:03:14 rhel-prod-02 kernel: slab_reclaimable:18244 slab_unreclaimable:24011
+Jun 19 21:03:14 rhel-prod-02 kernel: [ pid ]   uid  tgid total_vm      rss pgtables_bytes swapents oom_score_adj name
+Jun 19 21:03:14 rhel-prod-02 kernel: [14401]     0 14401    14822     2841    143360        0             0 systemd
+Jun 19 21:03:14 rhel-prod-02 kernel: [14482]   997 14482  2621440  1953100  19218432        0             0 java
+Jun 19 21:03:14 rhel-prod-02 kernel: oom-kill:constraint=CONSTRAINT_NONE,nodemask=(null),cpuset=/,mems_allowed=0,global_oom,task_memcg=/system.slice/elasticsearch.service,task=java,pid=14482,uid=997
+Jun 19 21:03:14 rhel-prod-02 kernel: Out of memory: Killed process 14482 (java) total-vm:10485760kB, anon-rss:7812400kB, file-rss:0kB, shmem-rss:0kB, UID:997 prio:10 (oom_score_adj 0)
+Jun 19 21:03:15 rhel-prod-02 systemd[1]: elasticsearch.service: Main process exited, code=killed, signal=KILL
+Jun 19 21:03:15 rhel-prod-02 systemd[1]: elasticsearch.service: Failed with result 'oom-kill'.
+Jun 19 21:03:15 rhel-prod-02 systemd[1]: elasticsearch.service: Scheduled restart job, restart counter is at 1.
+Jun 19 21:03:45 rhel-prod-02 systemd[1]: Started Elasticsearch.
+Jun 19 21:07:02 rhel-prod-02 kernel: java invoked oom-killer: gfp_mask=0x1100cca(GFP_HIGHUSER_MOVABLE|__GFP_ZERO), order=0, oom_score_adj=0
+Jun 19 21:07:02 rhel-prod-02 kernel: Out of memory: Killed process 14601 (java) total-vm:10485760kB, anon-rss:7802110kB, file-rss:0kB, shmem-rss:0kB, UID:997 prio:10 (oom_score_adj 0)
+Jun 19 21:07:02 rhel-prod-02 systemd[1]: elasticsearch.service: Main process exited, code=killed, signal=KILL
+Jun 19 21:07:02 rhel-prod-02 systemd[1]: elasticsearch.service: Failed with result 'oom-kill'.
+Jun 19 21:07:02 rhel-prod-02 systemd[1]: elasticsearch.service: Scheduled restart job, restart counter is at 2.
+Jun 19 21:07:32 rhel-prod-02 systemd[1]: Started Elasticsearch.
+Jun 19 21:11:55 rhel-prod-02 kernel: Out of memory: Killed process 14788 (java) total-vm:10485760kB, anon-rss:7819340kB, file-rss:0kB, shmem-rss:0kB, UID:997 prio:10 (oom_score_adj 0)
+Jun 19 21:11:55 rhel-prod-02 systemd[1]: elasticsearch.service: Main process exited, code=killed, signal=KILL
+Jun 19 21:11:55 rhel-prod-02 systemd[1]: elasticsearch.service: Failed with result 'oom-kill'.
+Jun 19 21:11:55 rhel-prod-02 systemd[1]: elasticsearch.service: Scheduled restart job, restart counter is at 3.
+Jun 19 21:12:25 rhel-prod-02 systemd[1]: Started Elasticsearch.
+Jun 19 21:16:41 rhel-prod-02 kernel: Out of memory: Killed process 14901 (java) total-vm:10485760kB, anon-rss:7808220kB, file-rss:0kB, shmem-rss:0kB, UID:997 prio:10 (oom_score_adj 0)
+Jun 19 21:16:41 rhel-prod-02 systemd[1]: elasticsearch.service: Main process exited, code=killed, signal=KILL
+Jun 19 21:16:41 rhel-prod-02 systemd[1]: elasticsearch.service: Failed with result 'oom-kill'.
+Jun 19 21:16:41 rhel-prod-02 systemd[1]: elasticsearch.service: Reached start limit 3 in 30min. Not starting.
+Jun 19 21:16:41 rhel-prod-02 systemd[1]: elasticsearch.service: Unit entered failed state.
+Jun 19 21:16:41 rhel-prod-02 systemd[1]: Failed to start Elasticsearch.
+
+-- Memory at time of collection --
+              total        used        free      shared  buff/cache   available
+Mem:           15Gi        14Gi       312Mi        88Mi       720Mi       332Mi
+Swap:            0B          0B          0B
+
+-- Elasticsearch JVM config (/etc/elasticsearch/jvm.options) --
+-Xms8g
+-Xmx8g
+
+-- System RAM --
+MemTotal:       16106128 kB
+MemFree:          319844 kB
+MemAvailable:     340112 kB
+SwapTotal:             0 kB
+SwapFree:              0 kB
+
+-- Disk (for swap creation) --
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/sda1        60G   18G   42G  30% /

@@ -1,0 +1,75 @@
+===== Host: win-srv-02 (10.10.6.32) =====
+===== OS: Windows Server 2019 Standard (Build 17763.5936) =====
+===== Log extract: Windows System + Security + Firewall Event Log =====
+===== Collected: 2026-06-20 07:15:00 UTC =====
+
+-- Reported symptom --
+-- All users: RDP connection attempt to win-srv-02 immediately returns --
+-- "Your computer can't connect to the remote computer because the Remote Desktop Gateway --
+--  server is temporarily unavailable." (or simply "Connection refused" from mstsc.exe) --
+-- Started: approximately 2026-06-20 06:00 UTC --
+
+-- Windows Firewall / Security event log --
+Log Name:      Microsoft-Windows-Windows Firewall With Advanced Security/Firewall
+Source:        Microsoft-Windows-Windows Firewall With Advanced Security
+Event ID:      2003
+Level:         Information
+Date:          2026-06-20 05:58:44
+Message:       A Windows Defender Firewall setting in the Domain profile has changed.
+               Changed Setting: Allow Inbound Remote Desktop Exceptions
+               New Value: Disable
+               Modified By: S-1-5-18 (SYSTEM — via Group Policy)
+
+Log Name:      Microsoft-Windows-Windows Firewall With Advanced Security/Firewall
+Source:        Microsoft-Windows-Windows Firewall With Advanced Security
+Event ID:      2004
+Level:         Information
+Date:          2026-06-20 05:58:44
+Message:       A rule has been added to the Windows Defender Firewall exception list.
+               Rule Information:
+                 Name:           Block RDP Inbound (GPO Enforcement)
+                 Direction:      Inbound
+                 Protocol:       TCP
+                 Local Port:     3389
+                 Action:         Block
+               Applied By:      Group Policy Object: CORP-Security-Baseline-v3.1
+
+-- Current firewall rule state on win-srv-02 --
+Get-NetFirewallRule -DisplayGroup "Remote Desktop" | Select DisplayName, Enabled, Direction, Action
+DisplayName                               Enabled  Direction  Action
+-----------                               -------  ---------  ------
+Remote Desktop - User Mode (TCP-In)       False    Inbound    Allow
+Remote Desktop - User Mode (UDP-In)       False    Inbound    Allow
+Remote Desktop - Shadow (TCP-In)          False    Inbound    Allow
+
+Get-NetFirewallRule -DisplayName "Block RDP Inbound*" | Select DisplayName, Enabled, Direction, Action
+DisplayName                               Enabled  Direction  Action
+-----------                               -------  ---------  ------
+Block RDP Inbound (GPO Enforcement)       True     Inbound    Block
+
+-- RDP service and port status --
+Get-Service -Name TermService, SessionEnv
+Status   Name          DisplayName
+------   ----          -----------
+Running  TermService   Remote Desktop Services
+Running  SessionEnv    Remote Desktop Configuration
+
+netstat -an | findstr :3389
+  TCP    0.0.0.0:3389           0.0.0.0:0              LISTENING
+-- Port IS listening on the host, but inbound connections are blocked by the firewall rule --
+
+-- Group Policy details --
+-- GPO "CORP-Security-Baseline-v3.1" was pushed to all servers at 05:55 UTC today --
+-- The GPO was intended to block RDP on DMZ servers only --
+-- Due to a targeting error, it was applied to ALL servers in the Servers OU --
+-- The GPO block rule takes precedence over the local "Allow" rules --
+-- GPO remediation (fixing the targeting) is pending approval and may take several hours --
+-- Immediate workaround needed: add a higher-priority local "Allow" rule for port 3389 --
+-- that overrides the GPO "Block" rule, OR disable the GPO-enforced block rule locally --
+
+-- CredSSP registry (for reference — this is not the issue) --
+-- Path: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System\CredSSP\Parameters --
+AllowEncryptionOracle  REG_DWORD  0x00000001 (1)   -- Mitigated (default, not the problem) --
+
+-- Affected users: all ~120 staff and admins who access win-srv-02 via RDP --
+-- This is a production application server running a critical line-of-business app --

@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+*.egg-info/
+.pytest_cache/
+.job_history.json
+# Runtime working folders (populated via the UI / Job Packs)
+agent/*
+input/*
+output/*
+!agent/.gitkeep
+!input/.gitkeep
+!output/.gitkeep

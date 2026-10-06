@@ -1,0 +1,70 @@
+===== Host: win-srv-01 (10.10.6.31) =====
+===== OS: Windows Server 2022 Datacenter (Build 20348.2340) =====
+===== Log extract: Windows System + Security + TerminalServices-RemoteConnectionManager Event Log =====
+===== Collected: 2026-06-20 07:00:00 UTC =====
+
+-- Remote Desktop connection failure on client side (reported by helpdesk) --
+-- Client OS: Windows 11 22H2 (Build 22621.3007) — NOT yet patched with May 2026 CU --
+-- Error shown to user: "An authentication error has occurred. The function requested is not supported." --
+-- Error code: 0x80090331 (SEC_E_ALGORITHM_MISMATCH) --
+
+-- Windows System Event Log on win-srv-01 --
+Log Name:      System
+Source:        Microsoft-Windows-TerminalServices-RemoteConnectionManager
+Event ID:      1057
+Level:         Warning
+Date:          2026-06-20 06:42:17
+Message:       RD Session Host Server has failed to create a new self signed certificate to be used for RD Session Host Server authentication on TLS connections. The relevant status code was Object already exists.
+
+Log Name:      System
+Source:        Schannel
+Event ID:      36888
+Level:         Error
+Date:          2026-06-20 06:42:19
+Message:       A fatal alert was generated and sent to the remote endpoint. This may result in termination of the connection. The TLS protocol defined fatal error code is 40. The Windows SChannel error state is 1205.
+               (Code 40 = handshake_failure — client and server cannot agree on a common cipher/auth method)
+
+Log Name:      System
+Source:        Schannel
+Event ID:      36874
+Level:         Error
+Date:          2026-06-20 06:42:21
+Message:       An TLS 1.2 connection request was received from a remote client application, but none of the cipher suites supported by the client application are supported by the server. The TLS connection request has failed.
+
+-- CredSSP registry on win-srv-01 (current state) --
+-- Path: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System\CredSSP\Parameters --
+AllowEncryptionOracle  REG_DWORD  0x00000000 (0)
+-- Value 0 = Force Updated Clients (most secure; server refuses connections from unpatched clients) --
+-- Value 1 = Mitigated (default after patch) --
+-- Value 2 = Vulnerable (allows unpatched clients — emergency fallback only) --
+
+-- This host was patched with KB5039227 (May 2026 Cumulative Update) on 2026-06-19 at 23:30 --
+-- Patch set AllowEncryptionOracle to 0 (most restrictive) via Group Policy update --
+-- Client machines connecting to this server have NOT yet received the same patch --
+-- Result: server enforces updated CredSSP; unpatched clients get SEC_E_ALGORITHM_MISMATCH --
+
+-- RDP service status on win-srv-01 --
+Get-Service -Name TermService, SessionEnv, UmRdpService
+Status   Name          DisplayName
+------   ----          -----------
+Running  TermService   Remote Desktop Services
+Running  SessionEnv    Remote Desktop Configuration
+Running  UmRdpService  Remote Desktop Services UserMode Port Redirector
+
+-- Firewall rule status --
+Get-NetFirewallRule -DisplayGroup "Remote Desktop" | Select DisplayName, Enabled, Direction, Action
+DisplayName                               Enabled  Direction  Action
+-----------                               -------  ---------  ------
+Remote Desktop - User Mode (TCP-In)       True     Inbound    Allow
+Remote Desktop - User Mode (UDP-In)       True     Inbound    Allow
+Remote Desktop - Shadow (TCP-In)          True     Inbound    Allow
+
+-- RDP port listening --
+netstat -an | findstr :3389
+  TCP    0.0.0.0:3389           0.0.0.0:0              LISTENING
+  TCP    [::]:3389              [::]:0                 LISTENING
+
+-- Note: RDP service is running and port is open. Firewall is fine. --
+-- The ONLY issue is the CredSSP policy mismatch between this patched server --
+-- and the unpatched client fleet. --
+-- Affected users: ~45 staff who connect via corporate laptops not yet in the May CU ring. --

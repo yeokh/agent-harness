@@ -1,0 +1,338 @@
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: adk-assistant-oauth
+  annotations:
+    openshift.io/display-name: "ADK Assistant (OAuth)"
+    description: >-
+      Flask + Google ADK assistant combining interactive Chat and autonomous
+      Batch modes, protected by an OpenShift OAuth-proxy sidecar so only
+      authenticated cluster users can reach it. After deploying, a cluster
+      admin must run once:
+      "oc adm policy add-cluster-role-to-user system:auth-delegator -z <APP_NAME> -n <project>"
+      so the proxy can validate tokens. See deployment/README.md for details.
+    openshift.io/provider-display-name: "RH Workshop"
+    iconClass: icon-python
+    tags: "adk,gemini,agent,workshop"
+objects:
+  - apiVersion: v1
+    kind: Secret
+    metadata:
+      name: ${APP_NAME}-api-keys
+      labels:
+        app: ${APP_NAME}
+    type: Opaque
+    stringData:
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      OPENAI_COMPATIBLE_API_KEY: ${OPENAI_COMPATIBLE_API_KEY}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL}
+
+  - apiVersion: v1
+    kind: Secret
+    metadata:
+      name: ${APP_NAME}-proxy-secret
+      labels:
+        app: ${APP_NAME}
+    type: Opaque
+    stringData:
+      session_secret: ${SESSION_SECRET}
+
+  - apiVersion: v1
+    kind: ServiceAccount
+    metadata:
+      name: ${APP_NAME}
+      labels:
+        app: ${APP_NAME}
+      annotations:
+        serviceaccounts.openshift.io/oauth-redirectreference.primary: >-
+          {"kind":"OAuthRedirectReference","apiVersion":"v1",
+          "reference":{"kind":"Route","name":"${APP_NAME}-oauth"}}
+
+  - apiVersion: v1
+    kind: PersistentVolumeClaim
+    metadata:
+      name: ${APP_NAME}-agent-pvc
+      labels:
+        app: ${APP_NAME}
+    spec:
+      accessModes:
+        - ReadWriteOnce
+      resources:
+        requests:
+          storage: ${AGENT_STORAGE_SIZE}
+
+  - apiVersion: v1
+    kind: PersistentVolumeClaim
+    metadata:
+      name: ${APP_NAME}-input-pvc
+      labels:
+        app: ${APP_NAME}
+    spec:
+      accessModes:
+        - ReadWriteOnce
+      resources:
+        requests:
+          storage: ${INPUT_STORAGE_SIZE}
+
+  - apiVersion: v1
+    kind: PersistentVolumeClaim
+    metadata:
+      name: ${APP_NAME}-output-pvc
+      labels:
+        app: ${APP_NAME}
+    spec:
+      accessModes:
+        - ReadWriteOnce
+      resources:
+        requests:
+          storage: ${OUTPUT_STORAGE_SIZE}
+
+  - apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: ${APP_NAME}-oauth
+      labels:
+        app: ${APP_NAME}
+    spec:
+      replicas: 1
+      selector:
+        matchLabels:
+          app: ${APP_NAME}
+      template:
+        metadata:
+          labels:
+            app: ${APP_NAME}
+        spec:
+          serviceAccountName: ${APP_NAME}
+          containers:
+            # Main application container — bound to localhost only, reachable
+            # exclusively through the oauth-proxy sidecar below.
+            - name: ${APP_NAME}
+              image: ${IMAGE_NAME}
+              ports:
+                - containerPort: ${{PORT}}
+                  protocol: TCP
+              envFrom:
+                - secretRef:
+                    name: ${APP_NAME}-api-keys
+              env:
+                - name: API_PROVIDER
+                  value: ${API_PROVIDER}
+                - name: GOOGLE_CLOUD_PROJECT
+                  value: ${GOOGLE_CLOUD_PROJECT}
+                - name: GOOGLE_CLOUD_LOCATION
+                  value: ${GOOGLE_CLOUD_LOCATION}
+                - name: MODEL
+                  value: ${MODEL}
+                - name: MAX_TURNS
+                  value: ${MAX_TURNS}
+                - name: MAX_OUTPUT_TOKENS
+                  value: ${MAX_OUTPUT_TOKENS}
+                - name: ALLOW_SHELL
+                  value: ${ALLOW_SHELL}
+                - name: SHELL_TIMEOUT
+                  value: "60"
+                - name: PORT
+                  value: ${PORT}
+                - name: HOST
+                  value: "127.0.0.1"
+              volumeMounts:
+                - name: agent-volume
+                  mountPath: /app/agent
+                - name: input-volume
+                  mountPath: /app/input
+                - name: output-volume
+                  mountPath: /app/output
+              resources:
+                requests:
+                  cpu: 250m
+                  memory: 768Mi
+                limits:
+                  cpu: "1"
+                  memory: 2Gi
+
+            # oauth-proxy sidecar — the only network-exposed container.
+            - name: oauth-proxy
+              image: ${OAUTH_PROXY_IMAGE}
+              ports:
+                - containerPort: 4443
+                  protocol: TCP
+              args:
+                - --https-address=:4443
+                - --provider=openshift
+                - --openshift-service-account=${APP_NAME}
+                - --upstream=http://localhost:${PORT}
+                - --tls-cert=/etc/tls/private/tls.crt
+                - --tls-key=/etc/tls/private/tls.key
+                - --cookie-secret-file=/etc/proxy/secrets/session_secret
+                # Uncomment to restrict to users who can "get pods" here:
+                # - --openshift-sar={"resource":"pods","verb":"get"}
+              volumeMounts:
+                - name: proxy-tls
+                  mountPath: /etc/tls/private
+                - name: proxy-secret
+                  mountPath: /etc/proxy/secrets
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 64Mi
+                limits:
+                  cpu: 200m
+                  memory: 128Mi
+          volumes:
+            - name: agent-volume
+              persistentVolumeClaim:
+                claimName: ${APP_NAME}-agent-pvc
+            - name: input-volume
+              persistentVolumeClaim:
+                claimName: ${APP_NAME}-input-pvc
+            - name: output-volume
+              persistentVolumeClaim:
+                claimName: ${APP_NAME}-output-pvc
+            - name: proxy-tls
+              secret:
+                secretName: ${APP_NAME}-tls
+            - name: proxy-secret
+              secret:
+                secretName: ${APP_NAME}-proxy-secret
+
+  - apiVersion: v1
+    kind: Service
+    metadata:
+      name: ${APP_NAME}-oauth
+      labels:
+        app: ${APP_NAME}
+      annotations:
+        service.alpha.openshift.io/serving-cert-secret-name: ${APP_NAME}-tls
+    spec:
+      selector:
+        app: ${APP_NAME}
+      ports:
+        - name: https
+          port: 4443
+          targetPort: 4443
+          protocol: TCP
+
+  - apiVersion: route.openshift.io/v1
+    kind: Route
+    metadata:
+      name: ${APP_NAME}-oauth
+      labels:
+        app: ${APP_NAME}
+    spec:
+      to:
+        kind: Service
+        name: ${APP_NAME}-oauth
+        weight: 100
+      port:
+        targetPort: https
+      tls:
+        termination: reencrypt
+        insecureEdgeTerminationPolicy: Redirect
+
+parameters:
+  - name: APP_NAME
+    displayName: Application name
+    description: Name used as the prefix for all created resources.
+    value: adk-assistant
+    required: true
+
+  - name: IMAGE_NAME
+    displayName: Container image
+    value: quay.io/kenghua_yeo/adk-assistant:v1
+    required: true
+
+  - name: OAUTH_PROXY_IMAGE
+    displayName: oauth-proxy sidecar image
+    value: registry.redhat.io/openshift4/ose-oauth-proxy:latest
+    required: true
+
+  - name: PORT
+    displayName: Application port
+    value: "8081"
+    required: true
+
+  - name: API_PROVIDER
+    displayName: AI provider
+    description: "One of: openai-compatible, gemini, vertex, anthropic, openai, openrouter."
+    value: openai-compatible
+    required: true
+
+  - name: MODEL
+    displayName: Model name
+    value: llama3.2
+    required: true
+
+  - name: MAX_TURNS
+    displayName: Max tool-call turns per run (batch loop guard)
+    value: "50"
+    required: true
+
+  - name: MAX_OUTPUT_TOKENS
+    displayName: Max output tokens per model response
+    value: "16384"
+    required: true
+
+  - name: ALLOW_SHELL
+    displayName: Allow the agent to run shell commands
+    description: "true or false. Defaults to false for self-service deployments."
+    value: "false"
+    required: true
+
+  - name: AGENT_STORAGE_SIZE
+    displayName: Agent volume size
+    value: 1Gi
+    required: true
+
+  - name: INPUT_STORAGE_SIZE
+    displayName: Input volume size
+    value: 5Gi
+    required: true
+
+  - name: OUTPUT_STORAGE_SIZE
+    displayName: Output volume size
+    value: 5Gi
+    required: true
+
+  - name: GOOGLE_API_KEY
+    displayName: Gemini API key
+    description: Only required if API_PROVIDER=gemini.
+
+  - name: GOOGLE_CLOUD_PROJECT
+    displayName: Google Cloud project (Vertex AI)
+    description: Only required if API_PROVIDER=vertex. Application Default Credentials must also be available to the pod.
+
+  - name: GOOGLE_CLOUD_LOCATION
+    displayName: Google Cloud location (Vertex AI)
+    value: us-central1
+
+  - name: ANTHROPIC_API_KEY
+    displayName: Anthropic API key
+    description: Only required if API_PROVIDER=anthropic.
+
+  - name: OPENAI_API_KEY
+    displayName: OpenAI API key
+    description: Only required if API_PROVIDER=openai.
+
+  - name: OPENAI_COMPATIBLE_API_KEY
+    displayName: OpenAI-compatible API key
+    description: Optional bearer token for API_PROVIDER=openai-compatible. Separate from OPENAI_API_KEY.
+
+  - name: OPENROUTER_API_KEY
+    displayName: OpenRouter API key
+    description: Only required if API_PROVIDER=openrouter.
+
+  - name: OPENAI_BASE_URL
+    displayName: OpenAI-compatible base URL
+    description: Used when API_PROVIDER=openai-compatible (e.g. a local Ollama/vLLM endpoint). No key required for this provider.
+    value: "http://localhost:11434/v1"
+
+  - name: SESSION_SECRET
+    displayName: oauth-proxy cookie session secret
+    description: Auto-generated; do not set manually.
+    generate: expression
+    from: "[a-zA-Z0-9]{32}"
+    required: true

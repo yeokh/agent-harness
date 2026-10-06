@@ -1,0 +1,16 @@
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: adk-gateway
+  labels:
+    app: adk-gateway
+spec:
+  to:
+    kind: Service
+    name: adk-gateway
+    weight: 100
+  port:
+    targetPort: https
+  tls:
+    termination: reencrypt
+    insecureEdgeTerminationPolicy: Redirect

@@ -1,0 +1,82 @@
+===== Host: sql-prod-02 (10.10.5.22) =====
+===== SQL Server Instance: MSSQLSERVER (default) — SQL Server 2019 (15.0.4316) =====
+===== Log extract: SQL Server ERRORLOG + Windows System/Application Event Log =====
+===== Collected: 2026-06-20 06:30:00 UTC =====
+
+-- SQL Server ERRORLOG --
+2026-06-20 04:00:01.14 spid5s       SQL Server is starting at normal priority base (=7). This is an informational message only. No user action is required.
+2026-06-20 04:00:01.37 spid5s       Detected 32 CPUs. This is an informational message; no user action is required.
+2026-06-20 04:00:03.55 spid5s       SQL Server is starting up.
+2026-06-20 04:00:05.12 spid5s       Server is listening on [ 'any' <ipv4> 1433].
+2026-06-20 04:00:05.98 spid5s       SQL Server is now ready for client connections. This is an informational message; no user action is required.
+
+-- SQL Agent fails to start --
+2026-06-20 04:00:07.21 spid5s       Starting up database 'msdb'.
+2026-06-20 04:00:07.88 sqlagent     SQL Server Agent could not be started (reason: Error creating a new session).
+2026-06-20 04:00:08.01 sqlagent     SQLServerAgent could not be started (reason: The service did not start due to a logon failure.).
+
+-- Windows System Event Log --
+Log Name:      System
+Source:        Service Control Manager
+Event ID:      7038
+Level:         Error
+Date:          2026-06-20 04:00:08
+Message:       The SQLSERVERAGENT service was unable to log on as CORP\svc-sqlagent with the currently configured password due to the following error:
+               Logon failure: the user has not been granted the requested logon type at this computer.
+               To ensure that the service is configured properly, use the Services snap-in in Microsoft Management Console (MMC).
+
+Log Name:      System
+Source:        Service Control Manager
+Event ID:      7000
+Level:         Error
+Date:          2026-06-20 04:00:08
+Message:       The SQL Server Agent (MSSQLSERVER) service failed to start due to the following error:
+               The service did not start due to a logon failure.
+
+Log Name:      System
+Source:        Microsoft-Windows-Security-Auditing
+Event ID:      4625
+Level:         Audit Failure
+Date:          2026-06-20 04:00:08
+Message:       An account failed to log on.
+               Subject: SYSTEM
+               Account For Which Logon Failed:
+                 Account Name: svc-sqlagent
+                 Account Domain: CORP
+               Failure Reason: The user has not been granted the requested logon type at this computer.
+               Logon Type: 5    (Service)
+               Status: 0xC000015B
+               Sub Status: 0x0
+
+-- Local Security Policy — SeServiceLogonRight (Log on as a service) --
+-- Queried via: secedit /export /cfg C:\Temp\secpol.cfg --
+SeServiceLogonRight = *S-1-5-80-3139157870-2983391045-3678747466-658725712-1809340420,NT SERVICE\MSSQLSERVER,NT SERVICE\SQLTELEMETRY
+-- Note: CORP\svc-sqlagent is NOT listed. It was removed from the policy --
+-- during a Group Policy Object refresh yesterday (GPO was updated incorrectly --
+-- and wiped the local override). --
+
+-- Current service configuration --
+sc qc SQLSERVERAGENT
+[SC] QueryServiceConfig SUCCESS
+
+SERVICE_NAME: SQLSERVERAGENT
+        TYPE               : 10  WIN32_OWN_PROCESS
+        START_TYPE         : 2   AUTO_START
+        ERROR_CONTROL      : 1   NORMAL
+        BINARY_PATH_NAME   : "C:\Program Files\Microsoft SQL Server\MSSQL15.MSSQLSERVER\MSSQL\Binn\sqlagent.exe" -i MSSQLSERVER
+        LOAD_ORDER_GROUP   :
+        TAG                : 0
+        DISPLAY_NAME       : SQL Server Agent (MSSQLSERVER)
+        DEPENDENCIES       : MSSQLSERVER
+        SERVICE_START_NAME : CORP\svc-sqlagent
+
+-- SQL Agent jobs that are not running as a result --
+-- (queried from msdb via MSSQLSERVER which IS running) --
+job_name                              enabled  last_run_outcome  last_run_date   last_run_time
+------------------------------------  -------  ----------------  ------------    -------------
+Daily Full Backup - All Databases     1        Succeeded         2026-06-19      220005
+Hourly Transaction Log Backup         1        Unknown           NULL            NULL
+Index Maintenance - Weekly            1        Succeeded         2026-06-15      010012
+Database Integrity Check - Weekly     1        Succeeded         2026-06-15      030044
+-- Note: Hourly Transaction Log Backup has not run since SQL Agent went down --
+-- Last successful log backup was 2026-06-19 at 23:00:00 --
