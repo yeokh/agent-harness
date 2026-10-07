@@ -1,0 +1,1 @@
+List the files in the input folder. For each file, write a short summary to output/summary.md (one heading per file). If the input folder is empty, write output/summary.md stating that there was no input. Then stop.

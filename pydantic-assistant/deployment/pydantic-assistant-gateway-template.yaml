@@ -1,9 +1,9 @@
 apiVersion: template.openshift.io/v1
 kind: Template
 metadata:
-  name: pydantic-assistant-name
+  name: pydantic-assistant-gateway
   annotations:
-    openshift.io/display-name: "Pydantic Assistant (named instance)"
+    openshift.io/display-name: "Pydantic Assistant (gateway)"
     description: >-
       Deploys one named instance of Pydantic Assistant (its own Deployment,
       Service, API-key Secret, and agent/input/output PVCs — no Route). Reach
@@ -28,6 +28,7 @@ objects:
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
+      OPENAI_COMPATIBLE_API_KEY: ${OPENAI_COMPATIBLE_API_KEY}
       OPENAI_BASE_URL: ${OPENAI_BASE_URL}
 
   - apiVersion: v1
@@ -200,7 +201,7 @@ parameters:
 
   - name: MAX_TURNS
     displayName: Max tool-call turns per run (batch loop guard)
-    value: "50"
+    value: "20"
     required: true
 
   - name: MAX_OUTPUT_TOKENS
@@ -240,6 +241,10 @@ parameters:
   - name: OPENROUTER_API_KEY
     displayName: OpenRouter API key
     description: Only required if API_PROVIDER=openrouter.
+
+  - name: OPENAI_COMPATIBLE_API_KEY
+    displayName: OpenAI-compatible API key
+    description: Optional bearer token when API_PROVIDER=openai-compatible.
 
   - name: OPENAI_BASE_URL
     displayName: OpenAI-compatible base URL

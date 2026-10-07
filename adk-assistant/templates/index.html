@@ -420,13 +420,13 @@ main { flex: 1; display: flex; min-height: 0; }
 
 /* Agent/Input file edit modal */
 #agent-edit-modal .modal { width: 620px; max-width: 96vw; }
-#agent-modal-content {
+#agent-modal-content, #set-extra-prompt {
   width: 100%; height: 280px; resize: vertical;
   font: 12.5px/1.6 Consolas, "Courier New", monospace;
   border: 1px solid var(--border); border-radius: 6px;
   padding: 8px 10px; margin-top: 4px; background: #fff; color: var(--text); outline: none;
 }
-#agent-modal-content:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(37,99,235,.12); }
+#agent-modal-content:focus, #set-extra-prompt:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(37,99,235,.12); }
 
 /* ── Modals ──────────────────────────────────────────────────────────────── */
 .modal-backdrop {
@@ -739,6 +739,9 @@ main { flex: 1; display: flex; min-height: 0; }
       <input type="checkbox" id="set-allow-shell">
       <label for="set-allow-shell" style="margin:0">Allow shell commands (run_command)</label>
     </div>
+    <label>Add System Prompt</label>
+    <textarea id="set-extra-prompt" style="height:110px" spellcheck="false" placeholder="Optional. e.g. Always answer in British English and keep reports under one page."></textarea>
+    <div class="hint">Added to the built system prompt for Chat and Batch, in a block labelled "ADDITIONAL SYSTEM PROMPT". It cannot override the data-security rules. Kept in server memory only; leave empty for none.</div>
     <div class="row">
       <button id="settings-cancel-btn">Cancel</button>
       <button class="primary" id="settings-save-btn">Save</button>
@@ -2047,6 +2050,8 @@ $("settings-btn").onclick = async () => {
     $("set-max-tokens").value  = s.max_output_tokens;
     $("set-shell-timeout").value = s.shell_timeout;
     $("set-allow-shell").checked = s.allow_shell;
+    $("set-extra-prompt").value  = s.extra_system_prompt || "";
+    $("set-extra-prompt").maxLength = s.extra_system_prompt_max || 8000;
     $("settings-modal").classList.add("open");
   } catch (e) { toast(e.message, "error"); }
 };
@@ -2060,6 +2065,7 @@ $("settings-save-btn").onclick   = async () => {
         max_output_tokens: parseInt($("set-max-tokens").value, 10),
         shell_timeout:    parseInt($("set-shell-timeout").value, 10),
         allow_shell:      $("set-allow-shell").checked,
+        extra_system_prompt: $("set-extra-prompt").value,
       }),
     });
     $("settings-modal").classList.remove("open");

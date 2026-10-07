@@ -150,3 +150,15 @@ def test_workspace_browser(client):
     assert client.get("/api/workspace?path=.venv").status_code == 400
     assert client.get("/api/workspace?path=../").status_code == 400
     assert client.get("/api/workspace?path=nope").status_code == 404
+
+
+def test_extra_system_prompt(client):
+    assert client.get("/api/settings").json()["extra_system_prompt"] == ""
+    r = client.post("/api/settings", json={"extra_system_prompt": "  Answer in French.  "})
+    assert r.json()["extra_system_prompt"] == "Answer in French."
+    prompt = client.web.adk_core.build_system_prompt("INSTR")
+    assert "<<<BEGIN ADDITIONAL SYSTEM PROMPT>>>\nAnswer in French.\n<<<END ADDITIONAL SYSTEM PROMPT>>>" in prompt
+    assert prompt.index("Data security policy") < prompt.index("ADDITIONAL SYSTEM PROMPT") < prompt.index("INSTRUCTIONS:")
+    assert client.post("/api/settings", json={"extra_system_prompt": "x" * 9000}).status_code == 400
+    client.post("/api/settings", json={"extra_system_prompt": ""})
+    assert "ADDITIONAL SYSTEM PROMPT" not in client.web.adk_core.build_system_prompt("INSTR")

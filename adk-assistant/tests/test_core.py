@@ -170,3 +170,21 @@ def test_compat_and_openai_keys_are_separate(monkeypatch):
     monkeypatch.setenv("OPENAI_COMPATIBLE_API_KEY", "sk-local")
     assert adk_core._build_model("openai-compatible", "x")._additional_args["api_key"] == "sk-local"
     assert adk_core._build_model("openai", "x")._additional_args["api_key"] == "sk-openai"
+
+
+def test_untrusted_labels(dirs, monkeypatch):
+    import httpx
+    a, i, o = dirs
+    (i / "f.txt").write_text("data")
+    monkeypatch.setattr(adk_core, "_validate_fetch_url", lambda u: u)
+    transport = httpx.MockTransport(lambda req: httpx.Response(200, text="hello web"))
+    real = httpx.AsyncClient
+    monkeypatch.setattr(httpx, "AsyncClient", lambda **kw: real(transport=transport, **kw))
+    logs, _, llm = run_batch(dirs, [
+        [call("read_input_file", path="f.txt")],
+        [call("web_fetch", url="http://example.test/x")], [text("ok")]])
+    joined = "\n".join(logs)
+    assert "UNTRUSTED FILE DATA" in joined
+    assert "UNTRUSTED EXTERNAL WEB DATA" in joined
+    assert "BEGIN WEB CONTENT: http://example.test/x" in joined
+    assert "BEGIN WEB CONTENT" in llm.seen_system[0] and "UNTRUSTED" in llm.seen_system[0]

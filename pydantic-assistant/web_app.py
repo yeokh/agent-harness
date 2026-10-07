@@ -16,20 +16,21 @@ output/ can be viewed (GET /api/file/<folder>/<name>); only agent/ and
 input/ files are editable (PUT/POST/DELETE) — output/ is read-only.
 
 Environment variables:
-    ANTHROPIC_API_KEY     Anthropic provider key
-    OPENAI_API_KEY        OpenAI provider key (also used for openai-compatible)
-    OPENROUTER_API_KEY    OpenRouter provider key
-    OPENAI_BASE_URL       OpenAI-compatible endpoint (default http://localhost:11434/v1)
-    API_PROVIDER          anthropic | openai | openrouter | openai-compatible
-    MODEL                 model id (default varies by provider)
-    MAX_TURNS             max agentic loop iterations per Chat turn or Batch run (default 50)
-    MAX_OUTPUT_TOKENS     token budget per model response (default 16384)
-    ALLOW_SHELL           set false to disable run_command entirely (default true)
-    SHELL_TIMEOUT         max seconds per shell command (default 60)
-    DISABLED_TOOLS        comma-separated tool names to remove from the agent
+    ANTHROPIC_API_KEY           Anthropic provider key
+    OPENAI_API_KEY              OpenAI provider key
+    OPENROUTER_API_KEY          OpenRouter provider key
+    OPENAI_COMPATIBLE_API_KEY   Optional bearer for openai-compatible endpoints
+    OPENAI_BASE_URL             OpenAI-compatible endpoint (default http://localhost:11434/v1)
+    API_PROVIDER                anthropic | openai | openrouter | openai-compatible
+    MODEL                       model id (default varies by provider)
+    MAX_TURNS                   max agentic loop iterations per Chat turn or Batch run (default 20)
+    MAX_OUTPUT_TOKENS           token budget per model response (default 16384)
+    ALLOW_SHELL                 set false to disable run_command entirely (default true)
+    SHELL_TIMEOUT               max seconds per shell command (default 60)
+    DISABLED_TOOLS              comma-separated tool names to remove from the agent
     AGENT_DIR / INPUT_DIR / OUTPUT_DIR   folder overrides (default ./agent, ./input, ./output)
-    JOBS_DIR              job-pack library used by the Batch tab's Load button (default ./sample-jobs)
-    PORT / HOST           web server bind (default 8081 / 0.0.0.0)
+    JOBS_DIR                    job-pack library used by the Batch tab's Load button (default ./sample-jobs)
+    PORT / HOST                 web server bind (default 8081 / 0.0.0.0)
 """
 
 import asyncio
@@ -81,9 +82,26 @@ KEY_ENV_VARS = {
     "anthropic":         "ANTHROPIC_API_KEY",
     "openai":            "OPENAI_API_KEY",
     "openrouter":        "OPENROUTER_API_KEY",
-    "openai-compatible": "OPENAI_API_KEY",
+    "openai-compatible": "OPENAI_COMPATIBLE_API_KEY",
 }
 NO_KEY_PROVIDERS = {"openai-compatible"}
+
+# Session-only system prompt text (not persisted to disk or env).
+_session_system_prompt = ""
+_session_system_prompt_lock = threading.Lock()
+
+# Workspace browser: hide VCS, venvs, caches, and secret-like names under project root.
+_WORKSPACE_HIDDEN_DIR_NAMES = {
+    ".git", ".svn", ".hg",
+    ".venv", "venv", "env",
+    "__pycache__", ".pytest_cache", ".mypy_cache", ".ruff_cache", ".tox",
+    ".cache", "node_modules", ".eggs", "dist", "build",
+    ".idea", ".vscode",
+}
+_WORKSPACE_SECRET_NAME_RE = re.compile(
+    r"(^\.env($|\.)|^\.env\.|secret|credentials|\.pem$|\.key$|^id_rsa|^id_ed25519)",
+    re.IGNORECASE,
+)
 
 # ---------------------------------------------------------------------------
 # Application log capture
@@ -417,6 +435,18 @@ def _sanitise_filename(raw: str) -> str:
 # Chat turn thread
 # ---------------------------------------------------------------------------
 
+def _get_session_system_prompt() -> str:
+    with _session_system_prompt_lock:
+        return _session_system_prompt
+
+
+def _set_session_system_prompt(text: str) -> str:
+    global _session_system_prompt
+    with _session_system_prompt_lock:
+        _session_system_prompt = text or ""
+        return _session_system_prompt
+
+
 def _run_chat_thread(
     user_message: str,
     prev_model_messages: list,
@@ -447,6 +477,7 @@ def _run_chat_thread(
                 instruction=instruction,
                 event_callback=on_event,
                 cancel_event=chat_session.cancel_event,
+                extra_system_prompt=_get_session_system_prompt(),
             )
         )
         chat_session.update_model_messages(new_messages)
@@ -504,6 +535,7 @@ def _run_batch_thread() -> None:
                 agent_core.run_batch(
                     AGENT_DIR, INPUT_DIR, OUTPUT_DIR, instruction,
                     log_callback=_log, stats_out=stats_out, cancel_event=_batch_cancel_event,
+                    extra_system_prompt=_get_session_system_prompt(),
                 )
             )
 
@@ -997,6 +1029,56 @@ def api_app_logs():
 _model_cache: dict = {}
 _model_cache_lock = threading.Lock()
 _MODEL_CACHE_TTL = 300.0
+_MODEL_PAGE_LIMIT = 100
+_MODEL_MAX_PAGES = 50
+
+
+def _openai_style_pages(url: str, headers: dict, *, timeout: float = 15.0) -> list:
+    """Walk OpenAI-style cursor pagination (limit / after / has_more)."""
+    items: list = []
+    after = None
+    for _ in range(_MODEL_MAX_PAGES):
+        params: dict = {"limit": _MODEL_PAGE_LIMIT}
+        if after:
+            params["after"] = after
+        resp = httpx.get(url, headers=headers, params=params, timeout=timeout)
+        resp.raise_for_status()
+        body = resp.json()
+        page = body.get("data") or []
+        items.extend(page)
+        if not body.get("has_more"):
+            break
+        after = body.get("last_id") or (page[-1].get("id") if page else None)
+        if not after:
+            break
+    return items
+
+
+def _anthropic_model_pages(key: str) -> list:
+    """Walk Anthropic Models API pagination (after_id / has_more / last_id)."""
+    items: list = []
+    after_id = None
+    headers = {"x-api-key": key, "anthropic-version": "2023-06-01"}
+    for _ in range(_MODEL_MAX_PAGES):
+        params: dict = {"limit": _MODEL_PAGE_LIMIT}
+        if after_id:
+            params["after_id"] = after_id
+        resp = httpx.get(
+            "https://api.anthropic.com/v1/models",
+            headers=headers,
+            params=params,
+            timeout=15,
+        )
+        resp.raise_for_status()
+        body = resp.json()
+        page = body.get("data") or []
+        items.extend(page)
+        if not body.get("has_more"):
+            break
+        after_id = body.get("last_id") or (page[-1].get("id") if page else None)
+        if not after_id:
+            break
+    return items
 
 
 def _fetch_models(provider: str) -> list:
@@ -1005,43 +1087,36 @@ def _fetch_models(provider: str) -> list:
         if cached and time.monotonic() - cached[0] < _MODEL_CACHE_TTL:
             return cached[1]
 
-    models = []
+    models: list = []
     try:
         if provider == "anthropic":
             key = os.environ.get("ANTHROPIC_API_KEY", "")
             if key:
-                resp = httpx.get(
-                    "https://api.anthropic.com/v1/models",
-                    headers={"x-api-key": key, "anthropic-version": "2023-06-01"},
-                    timeout=10,
-                )
-                resp.raise_for_status()
                 models = [
                     {"id": m["id"], "name": m.get("display_name", m["id"])}
-                    for m in resp.json().get("data", [])
+                    for m in _anthropic_model_pages(key)
                 ]
         elif provider == "openai":
             key = os.environ.get("OPENAI_API_KEY", "")
             if key:
-                resp = httpx.get(
+                raw = _openai_style_pages(
                     "https://api.openai.com/v1/models",
-                    headers={"Authorization": f"Bearer {key}"},
-                    timeout=10,
+                    {"Authorization": f"Bearer {key}"},
                 )
-                resp.raise_for_status()
                 models = [
                     {"id": m["id"], "name": m["id"]}
-                    for m in resp.json().get("data", [])
+                    for m in raw
                     if any(m["id"].startswith(p) for p in ("gpt-", "o1", "o3", "o4"))
                 ]
                 models.sort(key=lambda m: m["id"])
         elif provider == "openrouter":
             key = os.environ.get("OPENROUTER_API_KEY", "")
             if key:
+                # OpenRouter returns the full catalog in one response (no cursor pages).
                 resp = httpx.get(
                     "https://openrouter.ai/api/v1/models",
                     headers={"Authorization": f"Bearer {key}"},
-                    timeout=15,
+                    timeout=30,
                 )
                 resp.raise_for_status()
                 models = [
@@ -1052,14 +1127,21 @@ def _fetch_models(provider: str) -> list:
         elif provider == "openai-compatible":
             base = os.environ.get("OPENAI_BASE_URL", "http://localhost:11434/v1").rstrip("/")
             headers = {}
-            key = os.environ.get("OPENAI_API_KEY", "")
+            key = os.environ.get("OPENAI_COMPATIBLE_API_KEY", "")
             if key:
                 headers["Authorization"] = f"Bearer {key}"
-            resp = httpx.get(f"{base}/models", headers=headers, timeout=10)
-            resp.raise_for_status()
-            models = [{"id": m["id"], "name": m["id"]} for m in resp.json().get("data", [])]
+            try:
+                raw = _openai_style_pages(f"{base}/models", headers, timeout=15)
+            except Exception:
+                # Some local servers ignore pagination params; fall back to one shot.
+                resp = httpx.get(f"{base}/models", headers=headers, timeout=15)
+                resp.raise_for_status()
+                raw = resp.json().get("data", [])
+            models = [{"id": m["id"], "name": m["id"]} for m in raw]
     except Exception as exc:
+        # Do not cache failures — a later key/URL fix should retry immediately.
         log.warning("Failed to fetch %s models: %s", provider, exc)
+        return []
 
     with _model_cache_lock:
         _model_cache[provider] = (time.monotonic(), models)
@@ -1125,10 +1207,12 @@ def api_set_model():
 
 @app.route("/api/keys", methods=["GET"])
 def api_get_keys():
-    return jsonify({
+    status = {
         provider: bool(os.environ.get(env_var))
         for provider, env_var in KEY_ENV_VARS.items()
-    })
+    }
+    status["openai_base_url"] = os.environ.get("OPENAI_BASE_URL", "http://localhost:11434/v1")
+    return jsonify(status)
 
 
 @app.route("/api/keys", methods=["POST"])
@@ -1138,12 +1222,25 @@ def api_set_key():
     key = data.get("key", "")
     if provider not in KEY_ENV_VARS:
         return jsonify({"error": f"Unknown provider: {provider}"}), 400
-    if not key:
+
+    # openai-compatible may save base URL with or without a key.
+    if provider == "openai-compatible" and "openai_base_url" in data:
+        base = str(data.get("openai_base_url") or "").strip()
+        if base:
+            os.environ["OPENAI_BASE_URL"] = base
+            with _model_cache_lock:
+                _model_cache.pop("openai-compatible", None)
+
+    if key:
+        os.environ[KEY_ENV_VARS[provider]] = key
+        with _model_cache_lock:
+            _model_cache.pop(provider, None)
+        log.info("API key set for provider: %s", provider)
+    elif provider != "openai-compatible" or "openai_base_url" not in data:
         return jsonify({"error": "Missing 'key'"}), 400
-    os.environ[KEY_ENV_VARS[provider]] = key
-    with _model_cache_lock:
-        _model_cache.pop(provider, None)
-    log.info("API key set for provider: %s", provider)
+    else:
+        log.info("OpenAI-compatible base URL updated")
+
     return jsonify({"ok": True})
 
 
@@ -1179,14 +1276,14 @@ def api_set_tools():
 @app.route("/api/settings", methods=["GET"])
 def api_get_settings():
     return jsonify({
-        "max_turns": int(os.environ.get("MAX_TURNS", "50") or 50),
+        "max_turns": int(os.environ.get("MAX_TURNS", "20") or 20),
         "max_output_tokens": int(
             os.environ.get("MAX_OUTPUT_TOKENS", str(agent_core.DEFAULT_MAX_OUTPUT_TOKENS))
             or agent_core.DEFAULT_MAX_OUTPUT_TOKENS
         ),
         "allow_shell": os.environ.get("ALLOW_SHELL", "true").lower() not in ("0", "false", "no", "off"),
         "shell_timeout": int(os.environ.get("SHELL_TIMEOUT", "60") or 60),
-        "openai_base_url": os.environ.get("OPENAI_BASE_URL", "http://localhost:11434/v1"),
+        "system_prompt": _get_session_system_prompt(),
     })
 
 
@@ -1210,11 +1307,110 @@ def api_set_settings():
             os.environ["SHELL_TIMEOUT"] = str(max(1, int(data["shell_timeout"])))
         except (TypeError, ValueError):
             return jsonify({"error": "shell_timeout must be an integer"}), 400
+    if "system_prompt" in data:
+        # Session-only — never written to disk or process env.
+        _set_session_system_prompt(str(data.get("system_prompt") or ""))
+    # Legacy clients may still POST openai_base_url here.
     if "openai_base_url" in data:
         os.environ["OPENAI_BASE_URL"] = str(data["openai_base_url"]).strip()
         with _model_cache_lock:
             _model_cache.pop("openai-compatible", None)
     return api_get_settings()
+
+
+# ---------------------------------------------------------------------------
+# Routes: Agent Workspace (read-only project-root browser)
+# ---------------------------------------------------------------------------
+
+def _workspace_is_hidden_name(name: str) -> bool:
+    if name in _WORKSPACE_HIDDEN_DIR_NAMES:
+        return True
+    if name.startswith(".git"):
+        return True
+    if _WORKSPACE_SECRET_NAME_RE.search(name):
+        return True
+    if name.endswith(".egg-info") or name.endswith(".dist-info"):
+        return True
+    return False
+
+
+def _workspace_resolve(rel: str) -> Path:
+    """Resolve a relative workspace path under PROJECT_ROOT, or raise ValueError."""
+    rel = (rel or "").replace("\\", "/").strip("/")
+    if rel in (".", ""):
+        return PROJECT_ROOT
+    if ".." in Path(rel).parts:
+        raise ValueError("Path escapes project root")
+    target = (PROJECT_ROOT / rel).resolve()
+    try:
+        target.relative_to(PROJECT_ROOT)
+    except ValueError as exc:
+        raise ValueError("Path escapes project root") from exc
+    # Reject any path segment that is hidden/secret.
+    for part in target.relative_to(PROJECT_ROOT).parts:
+        if _workspace_is_hidden_name(part):
+            raise ValueError("Path not accessible")
+    return target
+
+
+@app.route("/api/workspace", methods=["GET"])
+def api_workspace_list():
+    """List files/dirs under the project root (read-only, filtered)."""
+    try:
+        root = _workspace_resolve(request.args.get("path", ""))
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+    if not root.is_dir():
+        return jsonify({"error": "Not a directory"}), 400
+
+    entries = []
+    try:
+        for child in sorted(root.iterdir(), key=lambda p: (not p.is_dir(), p.name.lower())):
+            if _workspace_is_hidden_name(child.name):
+                continue
+            rel = str(child.relative_to(PROJECT_ROOT)).replace("\\", "/")
+            item = {
+                "name": child.name,
+                "path": rel,
+                "type": "dir" if child.is_dir() else "file",
+            }
+            if child.is_file():
+                try:
+                    item["size"] = child.stat().st_size
+                except OSError:
+                    item["size"] = 0
+            entries.append(item)
+    except OSError as exc:
+        return jsonify({"error": str(exc)}), 500
+
+    rel_path = "" if root == PROJECT_ROOT else str(root.relative_to(PROJECT_ROOT)).replace("\\", "/")
+    return jsonify({"path": rel_path, "entries": entries})
+
+
+@app.route("/api/workspace/file", methods=["GET"])
+def api_workspace_file():
+    """Read a text file under the project root (read-only)."""
+    try:
+        target = _workspace_resolve(request.args.get("path", ""))
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+    if not target.is_file():
+        return jsonify({"error": "Not a file"}), 400
+    try:
+        size = target.stat().st_size
+    except OSError as exc:
+        return jsonify({"error": str(exc)}), 500
+    if size > 2_000_000:
+        return jsonify({"error": "File too large to preview (>2 MB)"}), 413
+    try:
+        raw = target.read_bytes()
+    except OSError as exc:
+        return jsonify({"error": str(exc)}), 500
+    if b"\x00" in raw[:8192]:
+        return jsonify({"error": "Binary file — preview not available"}), 415
+    text = raw.decode("utf-8", errors="replace")
+    rel = str(target.relative_to(PROJECT_ROOT)).replace("\\", "/")
+    return jsonify({"path": rel, "content": text, "size": size})
 
 
 # ---------------------------------------------------------------------------

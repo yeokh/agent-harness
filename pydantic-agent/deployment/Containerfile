@@ -1,0 +1,47 @@
+# Local:
+#   podman build -t pydantic-agent -f deployment/Containerfile .
+# Bind-mount run (no S3):
+#   podman run --rm \
+#     -v ./agent:/app/agent:Z -v ./input:/app/input:Z -v ./output:/app/output:Z \
+#     -e API_PROVIDER=openai-compatible -e MODEL=llama3.2 \
+#     -e OPENAI_BASE_URL=http://host.containers.internal:11434/v1 \
+#     pydantic-agent
+# S3 run:
+#   podman run --rm \
+#     -e S3_BUCKET=... -e JOB_ID=... -e AWS_ENDPOINT_URL=... \
+#     -e AWS_ACCESS_KEY_ID=... -e AWS_SECRET_ACCESS_KEY=... \
+#     -e API_PROVIDER=... -e MODEL=... \
+#     pydantic-agent
+
+FROM registry.access.redhat.com/ubi9/python-312
+
+LABEL io.k8s.display-name="Pydantic Agent" \
+      io.k8s.description="Headless Pydantic AI agent: download agent+input from S3, run once, upload output" \
+      io.openshift.tags="python,pydantic-ai,batch,job"
+
+USER 0
+WORKDIR /app
+
+COPY pyproject.toml .
+COPY pydantic_agent.py .
+
+RUN pip install --no-cache-dir .
+
+RUN mkdir -p /app/agent /app/input /app/output && \
+    chown -R 1001:0 /app && \
+    chmod -R g=u /app
+
+ENV AGENT_DIR=/app/agent \
+    INPUT_DIR=/app/input \
+    OUTPUT_DIR=/app/output \
+    API_PROVIDER=openai-compatible \
+    MODEL=llama3.2 \
+    MAX_TURNS=50 \
+    MAX_OUTPUT_TOKENS=16384 \
+    ALLOW_SHELL=false \
+    SHELL_TIMEOUT=60 \
+    S3_PREFIX=jobs
+
+USER 1001
+
+CMD ["python", "-m", "pydantic_agent"]

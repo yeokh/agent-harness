@@ -245,6 +245,7 @@ python web_app.py
 | `SHELL_GUARD` | `on` | `off` disables the destructive-command deny-list |
 | `ALLOW_PRIVATE_FETCH` | `false` | `true` lets `web_fetch` reach private/loopback addresses |
 | `ALLOW_MCP_STDIO` | follows `ALLOW_SHELL` | Allow stdio MCP servers |
+| `EXTRA_SYSTEM_PROMPT` | _(empty)_ | Additional system prompt block (also editable in Settings) |
 | `DISABLED_TOOLS` | _(empty)_ | Comma-separated tool names to remove (e.g. `run_command,web_fetch,skills,mcp`) |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | — | Enable OpenTelemetry export (needs the `otel` extra) |
 | `AGENT_DIR` / `INPUT_DIR` / `OUTPUT_DIR` | `./agent` `./input` `./output` | Folder paths |
@@ -272,7 +273,10 @@ required.
 - **App Logs tab** — live SSE stream of application log lines, colour-coded by level.
 - **Agent / Input / Output panels** — New, Upload, per-file delete, Clear all (Input/Output); resizable.
 - **Tool Permissions dialog (🔧)** — toggle individual tools, skills and MCP on/off. Applies to both modes.
-- **Settings dialog (⚙)** — max turns, max output tokens, shell timeout, allow-shell.
+- **Settings dialog (⚙)** — max turns, max output tokens, shell timeout, allow-shell, and **Add System Prompt**:
+  extra operator instructions (max 8000 chars, held in memory, or `EXTRA_SYSTEM_PROMPT`) that are appended to the
+  built system prompt for Chat and Batch inside a clearly labelled `ADDITIONAL SYSTEM PROMPT` block, placed after
+  the data-security policy so it cannot override it.
 - **API Keys dialog (🔑)** — enter keys per provider (and the OpenAI-compatible base URL); held in server memory only, never written to disk or
   returned to the browser.
 

@@ -35,6 +35,7 @@ Environment variables:
     LLM_TIMEOUT / LLM_RETRIES  per-request timeout seconds (default 120) / retries (default 1) for LiteLLM providers
     ALLOW_PRIVATE_FETCH   set true to let web_fetch reach private/loopback addresses (default false)
     ALLOW_MCP_STDIO       allow stdio MCP servers from agent/mcp.json (default: follows ALLOW_SHELL)
+    EXTRA_SYSTEM_PROMPT   additional operator system prompt appended to the built prompt (also set in Settings)
     DISABLED_TOOLS        comma-separated tool names to remove from the agent
     OTEL_EXPORTER_OTLP_ENDPOINT  enable OpenTelemetry export (needs the `otel` extra)
     AGENT_DIR / INPUT_DIR / OUTPUT_DIR   folder overrides (default ./agent, ./input, ./output)
@@ -1293,6 +1294,8 @@ async def api_get_settings():
         "allow_shell": adk_core.allow_shell(),
         "shell_timeout": adk_core.shell_timeout(),
         "openai_base_url": os.environ.get("OPENAI_BASE_URL", "http://localhost:11434/v1"),
+        "extra_system_prompt": adk_core.extra_system_prompt(),
+        "extra_system_prompt_max": adk_core.EXTRA_PROMPT_MAX_CHARS,
     }
 
 
@@ -1309,6 +1312,12 @@ async def api_set_settings(request: Request):
                 os.environ[env] = str(max(minimum, int(data[key])))
             except (TypeError, ValueError):
                 return _err(f"{key} must be an integer", 400)
+    if "extra_system_prompt" in data:
+        text = str(data["extra_system_prompt"]).strip()
+        if len(text) > adk_core.EXTRA_PROMPT_MAX_CHARS:
+            return _err(f"extra_system_prompt is limited to {adk_core.EXTRA_PROMPT_MAX_CHARS} characters", 400)
+        os.environ["EXTRA_SYSTEM_PROMPT"] = text
+        log.info("Additional system prompt %s", f"set ({len(text)} chars)" if text else "cleared")
     if "allow_shell" in data:
         os.environ["ALLOW_SHELL"] = "true" if data["allow_shell"] else "false"
     if "openai_base_url" in data:

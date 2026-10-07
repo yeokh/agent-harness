@@ -1,0 +1,183 @@
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: pydantic-agent
+  annotations:
+    openshift.io/display-name: "Pydantic Agent (Job)"
+    description: >-
+      Headless Pydantic AI agent as a one-shot Job. Downloads
+      s3://bucket/jobs/<job-id>/{agent,input}/, runs once, uploads
+      output/ back to s3://bucket/jobs/<job-id>/output/. No UI or Route.
+    openshift.io/provider-display-name: "RH Workshop"
+    iconClass: icon-python
+    tags: "pydantic,agent,job,s3,batch"
+objects:
+  - apiVersion: v1
+    kind: Secret
+    metadata:
+      name: ${APP_NAME}-secrets
+      labels:
+        app: ${APP_NAME}
+    type: Opaque
+    stringData:
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION}
+      AWS_ENDPOINT_URL: ${AWS_ENDPOINT_URL}
+
+  - apiVersion: batch/v1
+    kind: Job
+    metadata:
+      name: ${APP_NAME}
+      labels:
+        app: ${APP_NAME}
+    spec:
+      backoffLimit: 0
+      template:
+        metadata:
+          labels:
+            app: ${APP_NAME}
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: ${APP_NAME}
+              image: ${IMAGE_NAME}
+              envFrom:
+                - secretRef:
+                    name: ${APP_NAME}-secrets
+              env:
+                - name: API_PROVIDER
+                  value: ${API_PROVIDER}
+                - name: MODEL
+                  value: ${MODEL}
+                - name: MAX_TURNS
+                  value: ${MAX_TURNS}
+                - name: MAX_OUTPUT_TOKENS
+                  value: ${MAX_OUTPUT_TOKENS}
+                - name: ALLOW_SHELL
+                  value: ${ALLOW_SHELL}
+                - name: SHELL_TIMEOUT
+                  value: "60"
+                - name: S3_BUCKET
+                  value: ${S3_BUCKET}
+                - name: S3_PREFIX
+                  value: ${S3_PREFIX}
+                - name: JOB_ID
+                  value: ${JOB_ID}
+                - name: AGENT_DIR
+                  value: /app/agent
+                - name: INPUT_DIR
+                  value: /app/input
+                - name: OUTPUT_DIR
+                  value: /app/output
+              volumeMounts:
+                - name: agent
+                  mountPath: /app/agent
+                - name: input
+                  mountPath: /app/input
+                - name: output
+                  mountPath: /app/output
+              resources:
+                requests:
+                  cpu: 250m
+                  memory: 512Mi
+                limits:
+                  cpu: "1"
+                  memory: 1Gi
+          volumes:
+            - name: agent
+              emptyDir: {}
+            - name: input
+              emptyDir: {}
+            - name: output
+              emptyDir: {}
+
+parameters:
+  - name: APP_NAME
+    displayName: Application name
+    description: Name used as the prefix for Job and Secret.
+    value: pydantic-agent
+    required: true
+
+  - name: IMAGE_NAME
+    displayName: Container image
+    description: Full pullspec of the image to run.
+    value: quay.io/kenghua_yeo/pydantic-agent:v1
+    required: true
+
+  - name: S3_BUCKET
+    displayName: S3 bucket
+    description: Bucket containing jobs/<job-id>/{agent,input,output}/.
+    required: true
+
+  - name: JOB_ID
+    displayName: Job id
+    description: S3 key segment under the prefix (s3://bucket/jobs/<job-id>/).
+    required: true
+
+  - name: S3_PREFIX
+    displayName: S3 prefix
+    value: jobs
+    required: true
+
+  - name: AWS_ENDPOINT_URL
+    displayName: S3 endpoint URL
+    description: Leave empty for AWS. Set for MinIO / ODF / other S3-compatible APIs.
+
+  - name: AWS_DEFAULT_REGION
+    displayName: AWS region
+    value: us-east-1
+
+  - name: AWS_ACCESS_KEY_ID
+    displayName: S3 access key
+
+  - name: AWS_SECRET_ACCESS_KEY
+    displayName: S3 secret key
+
+  - name: API_PROVIDER
+    displayName: AI provider
+    description: "One of: anthropic, openai, openrouter, openai-compatible."
+    value: openai-compatible
+    required: true
+
+  - name: MODEL
+    displayName: Model name
+    value: llama3.2
+    required: true
+
+  - name: MAX_TURNS
+    displayName: Max tool-call turns
+    value: "50"
+    required: true
+
+  - name: MAX_OUTPUT_TOKENS
+    displayName: Max output tokens per model response
+    value: "16384"
+    required: true
+
+  - name: ALLOW_SHELL
+    displayName: Allow the agent to run shell commands
+    description: "true or false. Defaults to false."
+    value: "false"
+    required: true
+
+  - name: ANTHROPIC_API_KEY
+    displayName: Anthropic API key
+    description: Only required if API_PROVIDER=anthropic.
+
+  - name: OPENAI_API_KEY
+    displayName: OpenAI API key
+    description: Only required if API_PROVIDER=openai.
+
+  - name: OPENROUTER_API_KEY
+    displayName: OpenRouter API key
+    description: Only required if API_PROVIDER=openrouter.
+
+  - name: OPENAI_BASE_URL
+    displayName: OpenAI-compatible base URL
+    description: Used when API_PROVIDER=openai-compatible.
+    value: "http://localhost:11434/v1"

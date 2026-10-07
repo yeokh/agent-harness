@@ -177,7 +177,7 @@ Input file contents are treated as **data**, not instructions, in both modes:
 
 | Provider | `API_PROVIDER` value | Default model | API key variable |
 |----------|---------------------|--------------|-----------------|
-| Ollama / vLLM / any OpenAI-compatible | `openai-compatible` | `llama3.2` | `OPENAI_API_KEY` (optional) |
+| Ollama / vLLM / any OpenAI-compatible | `openai-compatible` | `llama3.2` | `OPENAI_COMPATIBLE_API_KEY` (optional) |
 | Anthropic | `anthropic` | `claude-opus-4-5` | `ANTHROPIC_API_KEY` |
 | OpenAI | `openai` | `gpt-4o` | `OPENAI_API_KEY` |
 | OpenRouter | `openrouter` | `anthropic/claude-opus-4-5` | `OPENROUTER_API_KEY` |
@@ -203,10 +203,11 @@ python web_app.py
 | `API_PROVIDER` | `openai-compatible` | Provider — see table above |
 | `MODEL` | _(provider default)_ | Model ID as returned by the provider |
 | `ANTHROPIC_API_KEY` | — | Anthropic API key |
-| `OPENAI_API_KEY` | — | OpenAI key; also used as bearer token for `openai-compatible` |
+| `OPENAI_API_KEY` | — | OpenAI key (openai provider only; pinned to api.openai.com) |
 | `OPENROUTER_API_KEY` | — | OpenRouter API key |
-| `OPENAI_BASE_URL` | `http://localhost:11434/v1` | Base URL for `openai-compatible` provider |
-| `MAX_TURNS` | `50` | Maximum tool-call loop iterations per Chat turn or per Batch run |
+| `OPENAI_COMPATIBLE_API_KEY` | — | Optional bearer for `openai-compatible` endpoints |
+| `OPENAI_BASE_URL` | `http://localhost:11434/v1` | Base URL for `openai-compatible` provider only |
+| `MAX_TURNS` | `20` | Maximum tool-call loop iterations per Chat turn or per Batch run |
 | `MAX_OUTPUT_TOKENS` | `16384` | Token budget for each model response |
 | `ALLOW_SHELL` | `true` | Set `false` to block `run_command` entirely |
 | `SHELL_TIMEOUT` | `60` | Max seconds a single shell command may run |
@@ -331,6 +332,8 @@ pydantic-assistant/
 │   ├── oauth-*.yaml (5 files)                 OAuth-proxy-protected OpenShift deploy
 │   ├── pydantic-assistant-template.yaml       Catalog template — basic variant
 │   ├── pydantic-assistant-oauth-template.yaml  Catalog template — OAuth variant
+│   ├── gateway-*.yaml (6 files)               Shared multi-instance gateway
+│   ├── pydantic-assistant-gateway-template.yaml Catalog template — named instance behind the gateway
 │   └── README.md                              Podman run + OpenShift deploy guide
 └── README.md
 ```

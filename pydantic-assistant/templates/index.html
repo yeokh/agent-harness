@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Pydantic Assistant</title>
+<title>AI Assistant Workspace</title>
 <style>
 :root {
   --bg:        #f0f2f5;
@@ -359,6 +359,52 @@ main { flex: 1; display: flex; min-height: 0; }
   font-family: "Segoe UI", system-ui, sans-serif;
 }
 
+/* ── Agent Workspace tab ─────────────────────────────────────────────────── */
+#workspace-panel {
+  flex: 1; display: none; flex-direction: column; min-height: 0;
+}
+#workspace-toolbar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 14px; background: var(--panel);
+  border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+#workspace-path {
+  font-size: 12.5px; font-family: Consolas, "Courier New", monospace;
+  color: var(--muted); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+#workspace-split {
+  flex: 1; display: flex; min-height: 0;
+}
+#workspace-tree {
+  width: 280px; min-width: 180px; overflow: auto;
+  border-right: 1px solid var(--border); background: var(--panel);
+  padding: 6px 0;
+}
+#workspace-tree .ws-entry {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 12px; cursor: pointer; font-size: 12.5px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+#workspace-tree .ws-entry:hover { background: var(--hover); }
+#workspace-tree .ws-entry.active { background: #e8f0fe; color: var(--accent); }
+#workspace-tree .ws-icon { color: var(--muted); width: 1.2em; flex-shrink: 0; }
+#workspace-preview {
+  flex: 1; display: flex; flex-direction: column; min-width: 0; min-height: 0;
+}
+#workspace-preview-name {
+  padding: 8px 14px; font-size: 13px; font-weight: 600;
+  border-bottom: 1px solid var(--border); background: var(--panel); flex-shrink: 0;
+}
+#workspace-preview-body {
+  flex: 1; overflow: auto; padding: 14px 18px; margin: 0;
+  font: 12.5px/1.6 Consolas, "Courier New", monospace;
+  white-space: pre-wrap; word-break: break-word; background: #fff;
+}
+#workspace-preview-body.empty-state {
+  color: var(--muted); font-style: italic; font-size: 13px;
+  font-family: "Segoe UI", system-ui, sans-serif;
+}
+
 /* ── App Logs tab ────────────────────────────────────────────────────────── */
 #logs-panel {
   flex: 1; display: none; flex-direction: column; min-height: 0;
@@ -475,7 +521,7 @@ main { flex: 1; display: flex; min-height: 0; }
 
 <!-- ── Header ────────────────────────────────────────────────────────────── -->
 <header>
-  <h1>&#129302; Pydantic Assistant</h1>
+  <h1>&#129302; AI Assistant Workspace</h1>
   <span class="badge" id="status-badge"><span class="dot"></span><span id="status-text">idle</span></span>
   <div class="spacer"></div>
   <select id="provider-select" title="API provider"></select>
@@ -526,6 +572,7 @@ main { flex: 1; display: flex; min-height: 0; }
       <button class="tab active" id="tab-chat">&#128172; Chat</button>
       <button class="tab" id="tab-batch">&#9889; Batch</button>
       <button class="tab" id="tab-viewer">&#128196; File Viewer</button>
+      <button class="tab" id="tab-workspace">&#128193; Agent Workspace</button>
       <button class="tab" id="tab-logs">&#128220; App Logs</button>
       <button class="tab" id="tab-readme">&#128214; README</button>
       <div class="spacer"></div>
@@ -600,6 +647,24 @@ main { flex: 1; display: flex; min-height: 0; }
       <pre id="viewer-body" class="empty-state">Click a file in the Agent, Input, or Output panel to view its contents here. Agent and Input files can be edited; Output files are read-only.</pre>
     </div>
 
+    <!-- Agent Workspace -->
+    <div id="workspace-panel">
+      <div id="workspace-toolbar">
+        <button class="small" id="workspace-up-btn" title="Parent folder">&#8593; Up</button>
+        <button class="small" id="workspace-refresh-btn" title="Refresh">&#8635;</button>
+        <span id="workspace-path">/</span>
+      </div>
+      <div id="workspace-split">
+        <div id="workspace-tree"></div>
+        <div id="workspace-preview">
+          <div id="workspace-preview-name" style="color:var(--muted);font-style:italic;font-weight:400">
+            Select a file to preview
+          </div>
+          <pre id="workspace-preview-body" class="empty-state">Read-only browser over the app project folder. VCS, virtualenvs, caches, and secret-like files are hidden.</pre>
+        </div>
+      </div>
+    </div>
+
     <!-- App Logs -->
     <div id="logs-panel">
       <div id="logs-toolbar">
@@ -658,19 +723,24 @@ main { flex: 1; display: flex; min-height: 0; }
     <label>Provider</label>
     <select id="key-provider"></select>
     <div id="key-env-hint" class="hint" style="margin-top:4px"></div>
-    <label>API key</label>
+    <div id="key-base-url-block" style="display:none">
+      <label>OpenAI-compatible base URL</label>
+      <input type="text" id="key-base-url" placeholder="http://localhost:11434/v1" autocomplete="off">
+      <div class="hint">Used by the openai-compatible provider (Ollama, vLLM, etc.)</div>
+    </div>
+    <label id="key-input-label">API key</label>
     <input type="password" id="key-input" placeholder="sk-..." autocomplete="off">
-    <div class="hint">Held in server memory only — never written to disk or returned to the browser.</div>
+    <div class="hint">Held in server memory only — never written to disk or returned to the browser. For openai-compatible the key is optional.</div>
     <div class="row">
       <button id="key-cancel-btn">Cancel</button>
-      <button class="primary" id="key-save-btn">Save key</button>
+      <button class="primary" id="key-save-btn">Save</button>
     </div>
   </div>
 </div>
 
 <!-- Settings modal -->
 <div class="modal-backdrop" id="settings-modal">
-  <div class="modal">
+  <div class="modal" style="width:560px;max-width:96vw">
     <h2>Settings</h2>
     <label>Max turns (tool call loop limit per Chat message or Batch run)</label>
     <input type="number" id="set-max-turns" min="1" max="500">
@@ -682,9 +752,11 @@ main { flex: 1; display: flex; min-height: 0; }
       <input type="checkbox" id="set-allow-shell">
       <label for="set-allow-shell" style="margin:0">Allow shell commands (run_command)</label>
     </div>
-    <label>OpenAI-compatible base URL</label>
-    <input type="text" id="set-base-url" placeholder="http://localhost:11434/v1">
-    <div class="hint">Used by the "openai-compatible" provider (Ollama, vLLM, etc.)</div>
+    <label>System Prompt (session only)</label>
+    <textarea id="set-system-prompt" rows="6" spellcheck="false"
+      placeholder="Optional extra guidance appended to the system prompt for this server session…"
+      style="width:100%;resize:vertical;font:12.5px/1.45 Consolas,'Courier New',monospace"></textarea>
+    <div class="hint">Not persisted. Appended in a labelled block that cannot override File access or Data security rules. Cleared when the server restarts.</div>
     <div class="row">
       <button id="settings-cancel-btn">Cancel</button>
       <button class="primary" id="settings-save-btn">Save</button>
@@ -705,9 +777,10 @@ const PROVIDER_KEY_ENV = {
   "anthropic":         "ANTHROPIC_API_KEY",
   "openai":            "OPENAI_API_KEY",
   "openrouter":        "OPENROUTER_API_KEY",
-  "openai-compatible": "OPENAI_API_KEY (optional)",
+  "openai-compatible": "OPENAI_COMPATIBLE_API_KEY (optional)",
 };
 const NO_KEY_PROVIDERS = new Set(["openai-compatible"]);
+const PROVIDER_NAMES = Object.keys(PROVIDER_KEY_ENV);
 
 // ── State ────────────────────────────────────────────────────────────────────
 let isRunning       = false;   // chat turn in progress
@@ -776,22 +849,24 @@ function setRunning(running) {
 
 // ── Tabs ─────────────────────────────────────────────────────────────────────
 function showTab(tab) {
-  ["chat", "batch", "viewer", "logs", "readme"].forEach((t) => {
+  ["chat", "batch", "viewer", "workspace", "logs", "readme"].forEach((t) => {
     $(`tab-${t}`).classList.toggle("active", t === tab);
-    const panelId = t === "chat"   ? "chat-panel"
-                  : t === "batch"  ? "batch-panel"
-                  : t === "viewer" ? "viewer-panel"
-                  : t === "readme" ? "readme-panel"
-                  :                  "logs-panel";
+    const panelId = t === "chat"      ? "chat-panel"
+                  : t === "batch"     ? "batch-panel"
+                  : t === "viewer"    ? "viewer-panel"
+                  : t === "workspace" ? "workspace-panel"
+                  : t === "readme"    ? "readme-panel"
+                  :                     "logs-panel";
     $(panelId).style.display = t === tab ? "flex" : "none";
   });
   $("logs-clear-btn").style.display = tab === "logs" ? "" : "none";
 }
-$("tab-chat").onclick   = () => showTab("chat");
-$("tab-batch").onclick  = () => { showTab("batch"); refreshBatchStatus(); loadJobPacks(); };
-$("tab-viewer").onclick = () => showTab("viewer");
-$("tab-logs").onclick   = () => showTab("logs");
-$("tab-readme").onclick = () => showTab("readme");
+$("tab-chat").onclick      = () => showTab("chat");
+$("tab-batch").onclick     = () => { showTab("batch"); refreshBatchStatus(); loadJobPacks(); };
+$("tab-viewer").onclick    = () => showTab("viewer");
+$("tab-workspace").onclick = () => { showTab("workspace"); loadWorkspace(); };
+$("tab-logs").onclick      = () => showTab("logs");
+$("tab-readme").onclick    = () => showTab("readme");
 
 // ── File Lists ───────────────────────────────────────────────────────────────
 async function refreshFileLists() {
@@ -1768,12 +1843,18 @@ function updateKeyEnvHint(provider) {
   const hint   = $("key-env-hint");
   const envVar = PROVIDER_KEY_ENV[provider];
   hint.innerHTML = envVar ? `Env var: <span class="key-hint">${envVar}</span>` : "";
+  const showBase = provider === "openai-compatible";
+  $("key-base-url-block").style.display = showBase ? "" : "none";
+  if (showBase) {
+    $("key-base-url").value = keyStatus.openai_base_url || "http://localhost:11434/v1";
+  }
+  $("key-input-label").textContent = showBase ? "API key (optional)" : "API key";
 }
 
 function openKeyModal(provider) {
   const sel = $("key-provider");
   sel.innerHTML = "";
-  for (const p of Object.keys(keyStatus)) {
+  for (const p of PROVIDER_NAMES) {
     const opt = document.createElement("option");
     opt.value = p; opt.textContent = keyStatus[p] ? `${p} \u2713` : p;
     if (p === provider) opt.selected = true;
@@ -1782,7 +1863,8 @@ function openKeyModal(provider) {
   updateKeyEnvHint(provider);
   $("key-input").value = "";
   $("key-modal").classList.add("open");
-  $("key-input").focus();
+  if (provider === "openai-compatible") $("key-base-url").focus();
+  else $("key-input").focus();
 }
 
 $("key-provider").onchange = () => updateKeyEnvHint($("key-provider").value);
@@ -1791,15 +1873,27 @@ $("key-cancel-btn").onclick = () => $("key-modal").classList.remove("open");
 $("key-save-btn").onclick   = async () => {
   const provider = $("key-provider").value;
   const key      = $("key-input").value.trim();
-  if (!key) { toast("Enter a key first", "error"); return; }
+  const payload  = { provider, key };
+  if (provider === "openai-compatible") {
+    payload.openai_base_url = $("key-base-url").value.trim();
+    if (!key && !payload.openai_base_url) {
+      toast("Enter a base URL or optional key", "error");
+      return;
+    }
+  } else if (!key) {
+    toast("Enter a key first", "error");
+    return;
+  }
   try {
     await api("/api/keys", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ provider, key }),
+      body: JSON.stringify(payload),
     });
     $("key-modal").classList.remove("open");
     $("key-input").value = "";
-    toast(`API key saved for ${provider}`);
+    toast(provider === "openai-compatible" && !key
+      ? "Base URL saved"
+      : `API key saved for ${provider}`);
     await checkKeys(false);
     await loadModels();
   } catch (e) { toast(e.message, "error"); }
@@ -1892,11 +1986,11 @@ $("tools-save-btn").onclick = async () => {
 $("settings-btn").onclick = async () => {
   try {
     const s = await api("/api/settings");
-    $("set-max-turns").value   = s.max_turns;
-    $("set-max-tokens").value  = s.max_output_tokens;
+    $("set-max-turns").value     = s.max_turns;
+    $("set-max-tokens").value    = s.max_output_tokens;
     $("set-shell-timeout").value = s.shell_timeout;
     $("set-allow-shell").checked = s.allow_shell;
-    $("set-base-url").value    = s.openai_base_url;
+    $("set-system-prompt").value = s.system_prompt || "";
     $("settings-modal").classList.add("open");
   } catch (e) { toast(e.message, "error"); }
 };
@@ -1906,17 +2000,88 @@ $("settings-save-btn").onclick   = async () => {
     await api("/api/settings", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        max_turns:        parseInt($("set-max-turns").value,   10),
+        max_turns:         parseInt($("set-max-turns").value,   10),
         max_output_tokens: parseInt($("set-max-tokens").value, 10),
-        shell_timeout:    parseInt($("set-shell-timeout").value, 10),
-        allow_shell:      $("set-allow-shell").checked,
-        openai_base_url:  $("set-base-url").value,
+        shell_timeout:     parseInt($("set-shell-timeout").value, 10),
+        allow_shell:       $("set-allow-shell").checked,
+        system_prompt:     $("set-system-prompt").value,
       }),
     });
     $("settings-modal").classList.remove("open");
     toast("Settings saved");
-    if ($("provider-select").value === "openai-compatible") loadModels();
   } catch (e) { toast(e.message, "error"); }
+};
+
+// ── Agent Workspace tab ───────────────────────────────────────────────────────
+let workspacePath = "";
+
+async function loadWorkspace(path) {
+  if (typeof path === "string") workspacePath = path;
+  const tree = $("workspace-tree");
+  $("workspace-path").textContent = "/" + (workspacePath || "");
+  tree.innerHTML = `<div class="empty-note" style="padding:8px 12px">Loading…</div>`;
+  try {
+    const data = await api(`/api/workspace?path=${encodeURIComponent(workspacePath)}`);
+    workspacePath = data.path || "";
+    $("workspace-path").textContent = "/" + (workspacePath || "");
+    tree.innerHTML = "";
+    if (!data.entries.length) {
+      const n = document.createElement("div");
+      n.className = "empty-note";
+      n.style.padding = "8px 12px";
+      n.textContent = "Empty folder";
+      tree.appendChild(n);
+      return;
+    }
+    for (const e of data.entries) {
+      const row = document.createElement("div");
+      row.className = "ws-entry";
+      row.title = e.path;
+      const icon = document.createElement("span");
+      icon.className = "ws-icon";
+      icon.textContent = e.type === "dir" ? "📁" : "📄";
+      const name = document.createElement("span");
+      name.textContent = e.type === "dir" ? `${e.name}/` : e.name;
+      row.appendChild(icon);
+      row.appendChild(name);
+      row.onclick = () => {
+        tree.querySelectorAll(".ws-entry.active").forEach((el) => el.classList.remove("active"));
+        row.classList.add("active");
+        if (e.type === "dir") loadWorkspace(e.path);
+        else previewWorkspaceFile(e.path);
+      };
+      tree.appendChild(row);
+    }
+  } catch (err) {
+    tree.innerHTML = "";
+    const n = document.createElement("div");
+    n.className = "empty-note";
+    n.style.padding = "8px 12px";
+    n.textContent = err.message || "Failed to load";
+    tree.appendChild(n);
+  }
+}
+
+async function previewWorkspaceFile(path) {
+  $("workspace-preview-name").textContent = path;
+  $("workspace-preview-name").style.cssText = "";
+  $("workspace-preview-body").className = "";
+  $("workspace-preview-body").textContent = "Loading…";
+  try {
+    const data = await api(`/api/workspace/file?path=${encodeURIComponent(path)}`);
+    $("workspace-preview-body").textContent = data.content;
+  } catch (err) {
+    $("workspace-preview-body").className = "empty-state";
+    $("workspace-preview-body").textContent = err.message || "Unable to preview";
+  }
+}
+
+$("workspace-refresh-btn").onclick = () => loadWorkspace(workspacePath);
+$("workspace-up-btn").onclick = () => {
+  if (!workspacePath) return;
+  const parts = workspacePath.split("/").filter(Boolean);
+  parts.pop();
+  loadWorkspace(parts.join("/"));
 };
 
 // ── Resizable sidebar divider (Input / Output) ────────────────────────────────

@@ -21,7 +21,7 @@ deployment/
 ├── pydantic-assistant-template.yaml        Catalog template — basic variant
 ├── pydantic-assistant-oauth-template.yaml   Catalog template — OAuth variant
 ├── gateway-*.yaml (6 files)                 Shared multi-instance gateway (see §6, deploy once)
-├── pydantic-assistant-name-template.yaml    Catalog template — named instance behind the gateway
+├── pydantic-assistant-gateway-template.yaml Catalog template — named instance behind the gateway
 └── README.md                               This file
 ```
 
@@ -226,11 +226,11 @@ Then deploy as many named instances as you like via the catalog template — eac
 needs `ASSISTANT_NAME` plus the usual provider/model/storage parameters:
 
 ```bash
-oc apply -f deployment/pydantic-assistant-name-template.yaml
-# or cluster-wide: oc apply -n openshift -f deployment/pydantic-assistant-name-template.yaml
+oc apply -f deployment/pydantic-assistant-gateway-template.yaml
+# or cluster-wide: oc apply -n openshift -f deployment/pydantic-assistant-gateway-template.yaml
 ```
 
-In the web console: **+Add → From Catalog**, search "Pydantic Assistant (named instance)",
+In the web console: **+Add → From Catalog**, search "Pydantic Assistant (gateway)",
 set `ASSISTANT_NAME` (e.g. `workshop-alice`), fill in the rest, **Create**. It's then reachable
 at `https://<gateway-host>/workshop-alice/` — no Route of its own, no extra gateway step.
 Deploy another with a different `ASSISTANT_NAME` and it's immediately reachable the same way.
@@ -257,7 +257,7 @@ Deploy another with a different `ASSISTANT_NAME` and it's immediately reachable 
 | `JOBS_DIR`           | `/app/sample-jobs`    | Bundled, read-only Job Pack library.                          |
 | `API_PROVIDER`       | `openai-compatible`  | One of `anthropic`, `openai`, `openrouter`, `openai-compatible`.|
 | `MODEL`              | `llama3.2`            | Model name/ID for the selected provider.                      |
-| `MAX_TURNS`          | `50`                  | Hard cap on tool-call turns per batch run (loop guard).       |
+| `MAX_TURNS`          | `20`                  | Hard cap on tool-call turns per batch run (loop guard).       |
 | `MAX_OUTPUT_TOKENS`  | `16384`               | Per-response output token cap.                                |
 | `ALLOW_SHELL`        | `true` (image) / `false` (OpenShift manifests) | Whether the agent's shell tool is enabled. |
 | `SHELL_TIMEOUT`      | `60`                  | Seconds before a shell tool call is killed.                   |
@@ -266,6 +266,7 @@ Deploy another with a different `ASSISTANT_NAME` and it's immediately reachable 
 | `ANTHROPIC_API_KEY`  | —                     | Required only if `API_PROVIDER=anthropic`.                    |
 | `OPENAI_API_KEY`     | —                     | Required only if `API_PROVIDER=openai`.                       |
 | `OPENROUTER_API_KEY` | —                     | Required only if `API_PROVIDER=openrouter`.                   |
+| `OPENAI_COMPATIBLE_API_KEY` | —              | Optional bearer for `openai-compatible` endpoints.            |
 | `OPENAI_BASE_URL`    | —                     | Used by `openai-compatible` (e.g. local Ollama/vLLM); no key needed for this provider. |
 
 ## Persistent volume reference
