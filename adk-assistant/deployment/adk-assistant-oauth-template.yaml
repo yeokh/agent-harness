@@ -263,7 +263,7 @@ parameters:
 
   - name: MODEL
     displayName: Model name
-    value: llama3.2
+    value: qwen38-27b
     required: true
 
   - name: MAX_TURNS
@@ -328,7 +328,7 @@ parameters:
   - name: OPENAI_BASE_URL
     displayName: OpenAI-compatible base URL
     description: Used when API_PROVIDER=openai-compatible (e.g. a local Ollama/vLLM endpoint). No key required for this provider.
-    value: "http://localhost:11434/v1"
+    value: "https://maas-rhdp.apps.maas.redhatworkshops.io/v1"
 
   - name: SESSION_SECRET
     displayName: oauth-proxy cookie session secret

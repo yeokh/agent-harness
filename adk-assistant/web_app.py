@@ -26,7 +26,7 @@ Environment variables:
     OPENAI_API_KEY        OpenAI provider key
     OPENAI_COMPATIBLE_API_KEY  optional bearer token for the openai-compatible endpoint (separate from OPENAI_API_KEY)
     OPENROUTER_API_KEY    OpenRouter provider key
-    OPENAI_BASE_URL       OpenAI-compatible endpoint (default http://localhost:11434/v1)
+    OPENAI_BASE_URL       OpenAI-compatible endpoint (default https://maas-rhdp.apps.maas.redhatworkshops.io/v1)
     MAX_TURNS             max model calls per Chat turn or Batch run (default 20)
     MAX_OUTPUT_TOKENS     token budget per model response (default 16384)
     ALLOW_SHELL           set false to disable run_command entirely (default true)
@@ -1167,7 +1167,7 @@ async def _fetch_models_uncached(provider: str) -> list:
             return [{"id": m["id"], "name": m.get("name", m["id"])} for m in data.get("data", [])]
 
         if provider == "openai-compatible":
-            base = os.environ.get("OPENAI_BASE_URL", "http://localhost:11434/v1").rstrip("/")
+            base = os.environ.get("OPENAI_BASE_URL", adk_core.DEFAULT_OPENAI_BASE_URL).rstrip("/")
             ckey = os.environ.get("OPENAI_COMPATIBLE_API_KEY", "")
             headers = {"Authorization": f"Bearer {ckey}"} if ckey else {}
             data = await _get_json(client, f"{base}/models", headers=headers)
@@ -1293,7 +1293,7 @@ async def api_get_settings():
         "max_output_tokens": adk_core.max_output_tokens(),
         "allow_shell": adk_core.allow_shell(),
         "shell_timeout": adk_core.shell_timeout(),
-        "openai_base_url": os.environ.get("OPENAI_BASE_URL", "http://localhost:11434/v1"),
+        "openai_base_url": os.environ.get("OPENAI_BASE_URL", adk_core.DEFAULT_OPENAI_BASE_URL),
         "extra_system_prompt": adk_core.extra_system_prompt(),
         "extra_system_prompt_max": adk_core.EXTRA_PROMPT_MAX_CHARS,
     }

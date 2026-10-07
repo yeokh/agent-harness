@@ -203,7 +203,7 @@ job history. For tracing, install the `otel` extra and set the standard `OTEL_EX
 
 | Provider | `API_PROVIDER` value | Default model | Credentials |
 |----------|---------------------|--------------|-------------|
-| Ollama / vLLM / any OpenAI-compatible | `openai-compatible` | `llama3.2` | `OPENAI_COMPATIBLE_API_KEY` (optional) |
+| Ollama / vLLM / any OpenAI-compatible | `openai-compatible` | `qwen38-27b` | `OPENAI_COMPATIBLE_API_KEY` (optional) |
 | Gemini (API key) | `gemini` | `gemini-2.5-flash` | `GOOGLE_API_KEY` |
 | Gemini on Vertex AI | `vertex` | `gemini-2.5-flash` | `GOOGLE_CLOUD_PROJECT` + Application Default Credentials |
 | Anthropic | `anthropic` | `claude-sonnet-5-5` | `ANTHROPIC_API_KEY` |
@@ -218,8 +218,8 @@ tool/function calling — small local models often do not.
 
 ```bash
 export API_PROVIDER=openai-compatible
-export OPENAI_BASE_URL=http://localhost:11434/v1   # Ollama default
-export MODEL=llama3.2
+export OPENAI_BASE_URL=http://localhost:11434/v1   # e.g. Ollama (default: MaaS endpoint)
+export MODEL=qwen38-27b
 
 python web_app.py
 ```
@@ -236,7 +236,7 @@ python web_app.py
 | `OPENAI_API_KEY` | — | OpenAI key (`openai` provider only) |
 | `OPENAI_COMPATIBLE_API_KEY` | — | Optional bearer token for the `openai-compatible` endpoint — separate from `OPENAI_API_KEY` |
 | `OPENROUTER_API_KEY` | — | OpenRouter API key |
-| `OPENAI_BASE_URL` | `http://localhost:11434/v1` | Base URL for `openai-compatible` provider |
+| `OPENAI_BASE_URL` | `https://maas-rhdp.apps.maas.redhatworkshops.io/v1` | Base URL for `openai-compatible` provider |
 | `MAX_TURNS` | `20` | Maximum model calls per Chat turn or per Batch run |
 | `MAX_OUTPUT_TOKENS` | `16384` | Token budget for each model response |
 | `LLM_TIMEOUT` / `LLM_RETRIES` | `120` / `1` | Per-request timeout (s) / retries for LiteLLM-backed providers |

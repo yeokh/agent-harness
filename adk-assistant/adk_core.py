@@ -59,7 +59,7 @@ USER_ID = "user"
 PROVIDERS = ("openai-compatible", "gemini", "vertex", "anthropic", "openai", "openrouter")
 
 DEFAULT_MODEL_BY_PROVIDER: dict[str, str] = {
-    "openai-compatible": "llama3.2",
+    "openai-compatible": "qwen38-27b",
     "gemini": "gemini-2.5-flash",
     "vertex": "gemini-2.5-flash",
     "anthropic": "claude-sonnet-5-5",
@@ -67,6 +67,7 @@ DEFAULT_MODEL_BY_PROVIDER: dict[str, str] = {
     "openrouter": "anthropic/claude-sonnet-5-5",
 }
 DEFAULT_PROVIDER = "openai-compatible"
+DEFAULT_OPENAI_BASE_URL = "https://maas-rhdp.apps.maas.redhatworkshops.io/v1"
 DEFAULT_MODEL = DEFAULT_MODEL_BY_PROVIDER[DEFAULT_PROVIDER]
 DEFAULT_MAX_OUTPUT_TOKENS = 16384
 WEB_FETCH_MAX_BYTES = 512_000
@@ -934,7 +935,7 @@ def _build_model(provider: str, model_id: str):
         return LiteLlm(model=f"openrouter/{model_id}", api_key=api_key, **llm_kwargs)
 
     if provider == "openai-compatible":
-        base_url = _env("OPENAI_BASE_URL", "http://localhost:11434/v1").rstrip("/")
+        base_url = _env("OPENAI_BASE_URL", DEFAULT_OPENAI_BASE_URL).rstrip("/")
         return LiteLlm(
             model=f"openai/{model_id}",
             api_base=base_url,

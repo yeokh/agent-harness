@@ -61,8 +61,9 @@ podman run -d --name adk-assistant \
   -v adk-input:/app/input \
   -v adk-output:/app/output \
   -e API_PROVIDER=openai-compatible \
-  -e MODEL=llama3.2 \
-  -e OPENAI_BASE_URL=http://host.containers.internal:11434/v1 \
+  -e MODEL=qwen38-27b \
+  -e OPENAI_BASE_URL=https://maas-rhdp.apps.maas.redhatworkshops.io/v1 \
+  -e OPENAI_COMPATIBLE_API_KEY=sk-... \
   -e ALLOW_SHELL=true \
   quay.io/kenghua_yeo/adk-assistant:v1
 ```
@@ -261,7 +262,7 @@ Deploy another with a different `ASSISTANT_NAME` and it's immediately reachable 
 | `OUTPUT_DIR`         | `/app/output`         | "                                                               |
 | `JOBS_DIR`           | `/app/sample-jobs`    | Bundled, read-only Job Pack library.                          |
 | `API_PROVIDER`       | `openai-compatible`  | One of `openai-compatible`, `gemini`, `vertex`, `anthropic`, `openai`, `openrouter`.|
-| `MODEL`              | `llama3.2`            | Model name/ID for the selected provider.                      |
+| `MODEL`              | `qwen38-27b`          | Model name/ID for the selected provider.                      |
 | `MAX_TURNS`          | `20`                  | Hard cap on model calls per run (loop guard).                 |
 | `MAX_OUTPUT_TOKENS`  | `16384`               | Per-response output token cap.                                |
 | `ALLOW_SHELL`        | `true` (image) / `false` (OpenShift manifests) | Whether the agent's shell tool is enabled. |
