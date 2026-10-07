@@ -801,7 +801,7 @@ def build_system_prompt(
     if autonomous:
         completion_block = (
             "Completion criteria — read carefully, this run is unattended:\n"
-            f"  - This is a one-shot run with a hard limit of {_env_int('MAX_TURNS', 50)} model\n"
+            f"  - This is a one-shot run with a hard limit of {_env_int('MAX_TURNS', 20)} model\n"
             "    calls; the run is force-stopped if you exceed it. Work efficiently and avoid\n"
             "    redundant or repeated tool calls (never call the same tool with the same\n"
             "    arguments more than once).\n"
@@ -953,7 +953,7 @@ def _build_run(
     provider = current_provider()
     model_id = current_model(provider)
     token_limit = max_output_tokens()
-    max_turns = _env_int("MAX_TURNS", 50)
+    max_turns = _env_int("MAX_TURNS", 20)
     disabled = disabled_tool_names()
 
     llm = model if model is not None else _build_model(provider, model_id)

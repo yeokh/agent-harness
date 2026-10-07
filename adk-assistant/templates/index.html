@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ADK Assistant</title>
+<title>AI Assistant Workspace</title>
 <style>
 :root {
   --bg:        #f0f2f5;
@@ -339,6 +339,39 @@ main { flex: 1; display: flex; min-height: 0; }
   font-family: "Segoe UI", system-ui, sans-serif;
 }
 
+/* ── Agent Workspace tab ─────────────────────────────────────────────────── */
+#workspace-panel { flex: 1; display: none; flex-direction: column; min-height: 0; }
+#ws-toolbar {
+  display: flex; align-items: center; gap: 8px; padding: 8px 14px;
+  background: var(--panel); border-bottom: 1px solid var(--border); flex-shrink: 0;
+  font-size: 13px;
+}
+#ws-crumbs { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+#ws-crumbs a { color: var(--accent); cursor: pointer; text-decoration: none; }
+#ws-crumbs a:hover { text-decoration: underline; }
+#ws-split { flex: 1; display: flex; min-height: 0; }
+#ws-list { width: 340px; max-width: 45%; overflow-y: auto; border-right: 1px solid var(--border); background: var(--panel); }
+.ws-row {
+  display: flex; align-items: center; gap: 8px; padding: 6px 14px; cursor: pointer;
+  font-size: 13px; border-bottom: 1px solid #f1f3f6;
+}
+.ws-row:hover { background: #f5f8ff; }
+.ws-row.selected { background: #e8f0fe; }
+.ws-row .nm { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ws-row .sz { color: var(--muted); font-size: 11.5px; flex-shrink: 0; }
+#ws-preview-wrap { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+#ws-preview-bar {
+  display: flex; align-items: center; gap: 8px; padding: 6px 14px;
+  border-bottom: 1px solid var(--border); background: var(--panel); font-size: 13px; font-weight: 600;
+}
+#ws-preview-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#ws-preview {
+  flex: 1; overflow: auto; padding: 14px 18px; margin: 0;
+  font: 12.5px/1.6 Consolas, "Courier New", monospace;
+  white-space: pre-wrap; word-break: break-word; background: #fff;
+}
+#ws-preview.empty-state { color: var(--muted); font-style: italic; font-size: 13px; font-family: "Segoe UI", system-ui, sans-serif; }
+
 /* ── README tab ──────────────────────────────────────────────────────────── */
 #readme-panel {
   flex: 1; display: none; flex-direction: column; min-height: 0;
@@ -475,7 +508,7 @@ main { flex: 1; display: flex; min-height: 0; }
 
 <!-- ── Header ────────────────────────────────────────────────────────────── -->
 <header>
-  <h1>&#129302; ADK Assistant</h1>
+  <h1>&#129302; AI Assistant Workspace</h1>
   <span class="badge" id="status-badge"><span class="dot"></span><span id="status-text">idle</span></span>
   <div class="spacer"></div>
   <select id="provider-select" title="API provider"></select>
@@ -526,6 +559,7 @@ main { flex: 1; display: flex; min-height: 0; }
       <button class="tab active" id="tab-chat">&#128172; Chat</button>
       <button class="tab" id="tab-batch">&#9889; Batch</button>
       <button class="tab" id="tab-viewer">&#128196; File Viewer</button>
+      <button class="tab" id="tab-workspace">&#128194; Agent Workspace</button>
       <button class="tab" id="tab-logs">&#128220; App Logs</button>
       <button class="tab" id="tab-readme">&#128214; README</button>
       <div class="spacer"></div>
@@ -598,6 +632,24 @@ main { flex: 1; display: flex; min-height: 0; }
         <button class="small primary" id="viewer-download-btn" style="display:none">&#8659; Download</button>
       </div>
       <pre id="viewer-body" class="empty-state">Click a file in the Agent, Input, or Output panel to view its contents here. Agent and Input files can be edited; Output files are read-only.</pre>
+    </div>
+
+    <!-- Agent Workspace -->
+    <div id="workspace-panel">
+      <div id="ws-toolbar">
+        <div id="ws-crumbs"></div>
+        <button class="small" id="ws-refresh-btn">&#8635; Refresh</button>
+      </div>
+      <div id="ws-split">
+        <div id="ws-list"></div>
+        <div id="ws-preview-wrap">
+          <div id="ws-preview-bar">
+            <span id="ws-preview-name" style="color:var(--muted);font-weight:400;font-style:italic">No file selected</span>
+            <button class="small" id="ws-copy-btn" style="display:none">&#128203; Copy</button>
+          </div>
+          <pre id="ws-preview" class="empty-state">Browse the application folder (read-only). Click a folder to open it, or a file to preview it.</pre>
+        </div>
+      </div>
     </div>
 
     <!-- App Logs -->
@@ -780,12 +832,13 @@ function setRunning(running) {
 
 // ── Tabs ─────────────────────────────────────────────────────────────────────
 function showTab(tab) {
-  ["chat", "batch", "viewer", "logs", "readme"].forEach((t) => {
+  ["chat", "batch", "viewer", "workspace", "logs", "readme"].forEach((t) => {
     $(`tab-${t}`).classList.toggle("active", t === tab);
     const panelId = t === "chat"   ? "chat-panel"
                   : t === "batch"  ? "batch-panel"
                   : t === "viewer" ? "viewer-panel"
                   : t === "readme" ? "readme-panel"
+                  : t === "workspace" ? "workspace-panel"
                   :                  "logs-panel";
     $(panelId).style.display = t === tab ? "flex" : "none";
   });
@@ -794,8 +847,83 @@ function showTab(tab) {
 $("tab-chat").onclick   = () => showTab("chat");
 $("tab-batch").onclick  = () => { showTab("batch"); refreshBatchStatus(); loadJobPacks(); };
 $("tab-viewer").onclick = () => showTab("viewer");
+$("tab-workspace").onclick = () => { showTab("workspace"); wsOpen(wsPath); };
 $("tab-logs").onclick   = () => showTab("logs");
 $("tab-readme").onclick = () => showTab("readme");
+
+// ── Agent Workspace ──────────────────────────────────────────────────────────
+let wsPath = "";
+let wsFileText = "";
+
+async function wsOpen(path) {
+  try {
+    const d = await api(`/api/workspace?path=${encodeURIComponent(path)}`);
+    wsPath = d.path;
+    wsRenderCrumbs(d.root);
+    const list = $("ws-list");
+    list.innerHTML = "";
+    const join = (n) => (wsPath ? wsPath + "/" : "") + n;
+    if (wsPath) list.appendChild(wsRow("📁", "..", "", () => wsOpen(wsPath.split("/").slice(0, -1).join("/"))));
+    for (const e of d.entries) {
+      list.appendChild(wsRow(e.type === "dir" ? "📁" : "📄", e.name,
+        e.type === "dir" ? "" : fmtSize(e.size),
+        e.type === "dir" ? () => wsOpen(join(e.name)) : (row) => wsPreview(join(e.name), row)));
+    }
+    if (!d.entries.length && !wsPath) list.textContent = "Empty folder";
+  } catch (e) { toast(e.message, "error"); }
+}
+
+function wsRow(icon, name, size, onclick) {
+  const row = document.createElement("div");
+  row.className = "ws-row";
+  row.innerHTML = `<span>${icon}</span><span class="nm">${esc(name)}</span><span class="sz">${esc(size)}</span>`;
+  row.onclick = () => onclick(row);
+  return row;
+}
+
+function wsRenderCrumbs(root) {
+  const c = $("ws-crumbs");
+  c.innerHTML = "";
+  c.title = root;
+  const add = (label, path) => {
+    const a = document.createElement("a");
+    a.textContent = label; a.onclick = () => wsOpen(path);
+    c.appendChild(a);
+  };
+  add("/ (app root)", "");
+  let acc = "";
+  for (const part of wsPath ? wsPath.split("/") : []) {
+    acc += (acc ? "/" : "") + part;
+    c.appendChild(document.createTextNode(" / "));
+    add(part, acc);
+  }
+}
+
+async function wsPreview(path, row) {
+  document.querySelectorAll("#ws-list .ws-row.selected").forEach((r) => r.classList.remove("selected"));
+  row.classList.add("selected");
+  const pre = $("ws-preview");
+  try {
+    const d = await api(`/api/workspace/file?path=${encodeURIComponent(path)}`);
+    $("ws-preview-name").textContent = path;
+    $("ws-preview-name").style = "";
+    pre.classList.remove("empty-state");
+    if (d.binary) {
+      wsFileText = "";
+      pre.classList.add("empty-state");
+      pre.textContent = `Binary file (${fmtSize(d.size)}) — preview not available.`;
+      $("ws-copy-btn").style.display = "none";
+    } else {
+      wsFileText = d.content;
+      pre.textContent = d.content + (d.truncated ? "\n\n… truncated (file larger than 1 MB)" : "");
+      $("ws-copy-btn").style.display = "";
+    }
+  } catch (e) { toast(e.message, "error"); }
+}
+$("ws-refresh-btn").onclick = () => wsOpen(wsPath);
+$("ws-copy-btn").onclick = () => {
+  navigator.clipboard.writeText(wsFileText).then(() => toast("Copied"), () => toast("Copy failed", "error"));
+};
 
 // ── File Lists ───────────────────────────────────────────────────────────────
 async function refreshFileLists() {

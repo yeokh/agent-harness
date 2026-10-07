@@ -16,6 +16,7 @@ def client(tmp_path, monkeypatch):
     (tmp_path / "jobs/p1/input/a.txt").write_text("A")
     for k, v in (("AGENT_DIR", "agent"), ("INPUT_DIR", "input"), ("OUTPUT_DIR", "output"), ("JOBS_DIR", "jobs")):
         monkeypatch.setenv(k, str(tmp_path / v))
+    monkeypatch.setenv("WORKSPACE_ROOT", str(tmp_path))
     monkeypatch.setenv("JOB_HISTORY_FILE", str(tmp_path / "hist.json"))
     import importlib, web_app
     web_app = importlib.reload(web_app)
@@ -127,3 +128,25 @@ def test_key_status_is_per_provider(client, monkeypatch):
     client.post("/api/keys", json={"provider": "openai-compatible", "key": "k"})
     keys = client.get("/api/keys").json()
     assert keys["openai-compatible"] is True and keys["openai"] is False
+
+
+def test_workspace_browser(client):
+    root = client.root
+    (root / "sub").mkdir(); (root / "sub" / "n.txt").write_text("note")
+    (root / ".gitignore").write_text("x"); (root / ".git").mkdir()
+    (root / ".env").write_text("SECRET=1"); (root / ".venv").mkdir()
+    (root / "blob.bin").write_bytes(b"\x00\x01")
+    top = client.get("/api/workspace").json()
+    names = [e["name"] for e in top["entries"]]
+    assert top["path"] == "" and "sub" in names and "agent" in names
+    assert ".env" not in names and ".venv" not in names
+    assert not [n for n in names if n.startswith(".git")]
+    assert client.get("/api/workspace/file?path=.gitignore").status_code == 400
+    assert top["entries"][0]["type"] == "dir"  # folders first
+    assert client.get("/api/workspace?path=sub").json()["entries"][0]["name"] == "n.txt"
+    assert client.get("/api/workspace/file?path=sub/n.txt").json()["content"] == "note"
+    assert client.get("/api/workspace/file?path=blob.bin").json()["binary"] is True
+    assert client.get("/api/workspace/file?path=.env").status_code == 400
+    assert client.get("/api/workspace?path=.venv").status_code == 400
+    assert client.get("/api/workspace?path=../").status_code == 400
+    assert client.get("/api/workspace?path=nope").status_code == 404

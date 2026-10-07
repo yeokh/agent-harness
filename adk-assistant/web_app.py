@@ -27,7 +27,7 @@ Environment variables:
     OPENAI_COMPATIBLE_API_KEY  optional bearer token for the openai-compatible endpoint (separate from OPENAI_API_KEY)
     OPENROUTER_API_KEY    OpenRouter provider key
     OPENAI_BASE_URL       OpenAI-compatible endpoint (default http://localhost:11434/v1)
-    MAX_TURNS             max model calls per Chat turn or Batch run (default 50)
+    MAX_TURNS             max model calls per Chat turn or Batch run (default 20)
     MAX_OUTPUT_TOKENS     token budget per model response (default 16384)
     ALLOW_SHELL           set false to disable run_command entirely (default true)
     SHELL_TIMEOUT         max seconds per shell command (default 60)
@@ -38,6 +38,7 @@ Environment variables:
     DISABLED_TOOLS        comma-separated tool names to remove from the agent
     OTEL_EXPORTER_OTLP_ENDPOINT  enable OpenTelemetry export (needs the `otel` extra)
     AGENT_DIR / INPUT_DIR / OUTPUT_DIR   folder overrides (default ./agent, ./input, ./output)
+    WORKSPACE_ROOT        root of the read-only Agent Workspace browser (default: the app folder)
     JOBS_DIR              job-pack library used by the Batch tab's Load button (default ./sample-jobs)
     PORT / HOST           web server bind (default 8081 / 0.0.0.0)
 """
@@ -67,6 +68,7 @@ import adk_core
 # ---------------------------------------------------------------------------
 
 PROJECT_ROOT = Path(__file__).resolve().parent
+WORKSPACE_ROOT = Path(os.environ.get("WORKSPACE_ROOT", PROJECT_ROOT)).resolve()
 AGENT_DIR = Path(os.environ.get("AGENT_DIR", "./agent")).resolve()
 INPUT_DIR = Path(os.environ.get("INPUT_DIR", "./input")).resolve()
 OUTPUT_DIR = Path(os.environ.get("OUTPUT_DIR", "./output")).resolve()
@@ -988,6 +990,77 @@ async def api_upload(folder: str, request: Request):
 
 
 # ---------------------------------------------------------------------------
+# Routes: Agent Workspace (read-only browser over the app folder)
+# ---------------------------------------------------------------------------
+
+# Never listed and never readable: dependency/VCS/cache trees and git files (.git, .gitignore, .gitkeep, …) and anything that
+# commonly holds secrets.
+_WS_HIDDEN_DIRS = {".git", ".venv", "venv", "node_modules", "__pycache__", ".pytest_cache",
+                   ".mypy_cache", ".ruff_cache", ".tox", ".idea", ".vscode"}
+_WS_SECRET_PATTERNS = (".git*", ".env", ".env.*", "*.pem", "*.key", "credentials.json", "secrets.*", "id_rsa*", "*.p12")
+WS_MAX_READ_BYTES = 1_000_000
+
+
+def _ws_blocked(rel: Path) -> bool:
+    from fnmatch import fnmatch
+    for part in rel.parts:
+        if part in _WS_HIDDEN_DIRS or any(fnmatch(part, pat) for pat in _WS_SECRET_PATTERNS):
+            return True
+    return False
+
+
+def _ws_resolve(rel: str) -> Path:
+    target = _safe_path(WORKSPACE_ROOT, rel.strip("/"))
+    if _ws_blocked(target.relative_to(WORKSPACE_ROOT)):
+        raise ValueError("Path is not available in the workspace browser")
+    return target
+
+
+@app.get("/api/workspace")
+async def api_workspace_list(path: str = ""):
+    try:
+        target = _ws_resolve(path)
+    except ValueError as exc:
+        return _err(str(exc), 400)
+    if not target.is_dir():
+        return _err(f"Not a folder: {path}", 404)
+    entries = []
+    for child in target.iterdir():
+        if _ws_blocked(Path(child.name)):
+            continue
+        try:
+            st = child.stat()
+        except OSError:
+            continue
+        entries.append({
+            "name": child.name,
+            "type": "dir" if child.is_dir() else "file",
+            "size": None if child.is_dir() else st.st_size,
+            "modified": datetime.fromtimestamp(st.st_mtime, tz=timezone.utc).isoformat(),
+        })
+    entries.sort(key=lambda e: (e["type"] != "dir", e["name"].lower()))
+    rel = target.relative_to(WORKSPACE_ROOT).as_posix()
+    return {"root": str(WORKSPACE_ROOT), "path": "" if rel == "." else rel, "entries": entries}
+
+
+@app.get("/api/workspace/file")
+async def api_workspace_file(path: str):
+    try:
+        target = _ws_resolve(path)
+    except ValueError as exc:
+        return _err(str(exc), 400)
+    if not target.is_file():
+        return _err(f"File not found: {path}", 404)
+    size = target.stat().st_size
+    with target.open("rb") as fh:
+        raw = fh.read(WS_MAX_READ_BYTES)
+    if b"\x00" in raw[:8192]:
+        return {"name": path, "size": size, "binary": True, "content": ""}
+    return {"name": path, "size": size, "binary": False, "truncated": size > len(raw),
+            "content": raw.decode("utf-8", errors="replace")}
+
+
+# ---------------------------------------------------------------------------
 # Routes: App Logs (SSE)
 # ---------------------------------------------------------------------------
 
@@ -1215,7 +1288,7 @@ async def api_set_tools(request: Request):
 @app.get("/api/settings")
 async def api_get_settings():
     return {
-        "max_turns": adk_core._env_int("MAX_TURNS", 50),
+        "max_turns": adk_core._env_int("MAX_TURNS", 20),
         "max_output_tokens": adk_core.max_output_tokens(),
         "allow_shell": adk_core.allow_shell(),
         "shell_timeout": adk_core.shell_timeout(),

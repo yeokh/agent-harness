@@ -206,7 +206,7 @@ parameters:
 
   - name: MAX_TURNS
     displayName: Max tool-call turns per run (batch loop guard)
-    value: "50"
+    value: "20"
     required: true
 
   - name: MAX_OUTPUT_TOKENS

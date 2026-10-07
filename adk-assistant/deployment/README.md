@@ -262,7 +262,7 @@ Deploy another with a different `ASSISTANT_NAME` and it's immediately reachable 
 | `JOBS_DIR`           | `/app/sample-jobs`    | Bundled, read-only Job Pack library.                          |
 | `API_PROVIDER`       | `openai-compatible`  | One of `openai-compatible`, `gemini`, `vertex`, `anthropic`, `openai`, `openrouter`.|
 | `MODEL`              | `llama3.2`            | Model name/ID for the selected provider.                      |
-| `MAX_TURNS`          | `50`                  | Hard cap on model calls per run (loop guard).                 |
+| `MAX_TURNS`          | `20`                  | Hard cap on model calls per run (loop guard).                 |
 | `MAX_OUTPUT_TOKENS`  | `16384`               | Per-response output token cap.                                |
 | `ALLOW_SHELL`        | `true` (image) / `false` (OpenShift manifests) | Whether the agent's shell tool is enabled. |
 | `SHELL_TIMEOUT`      | `60`                  | Seconds before a shell tool call is killed.                   |

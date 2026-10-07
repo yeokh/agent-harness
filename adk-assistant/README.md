@@ -237,7 +237,7 @@ python web_app.py
 | `OPENAI_COMPATIBLE_API_KEY` | — | Optional bearer token for the `openai-compatible` endpoint — separate from `OPENAI_API_KEY` |
 | `OPENROUTER_API_KEY` | — | OpenRouter API key |
 | `OPENAI_BASE_URL` | `http://localhost:11434/v1` | Base URL for `openai-compatible` provider |
-| `MAX_TURNS` | `50` | Maximum model calls per Chat turn or per Batch run |
+| `MAX_TURNS` | `20` | Maximum model calls per Chat turn or per Batch run |
 | `MAX_OUTPUT_TOKENS` | `16384` | Token budget for each model response |
 | `LLM_TIMEOUT` / `LLM_RETRIES` | `120` / `1` | Per-request timeout (s) / retries for LiteLLM-backed providers |
 | `ALLOW_SHELL` | `true` | Set `false` to block `run_command` entirely |
@@ -248,6 +248,7 @@ python web_app.py
 | `DISABLED_TOOLS` | _(empty)_ | Comma-separated tool names to remove (e.g. `run_command,web_fetch,skills,mcp`) |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | — | Enable OpenTelemetry export (needs the `otel` extra) |
 | `AGENT_DIR` / `INPUT_DIR` / `OUTPUT_DIR` | `./agent` `./input` `./output` | Folder paths |
+| `WORKSPACE_ROOT` | app folder | Root of the read-only Agent Workspace browser |
 | `JOBS_DIR` | `./sample-jobs` | Job-pack library used by the Batch tab's Load button |
 | `JOB_HISTORY_FILE` | `./.job_history.json` | Batch job history file |
 | `PORT` / `HOST` | `8081` / `0.0.0.0` | Web UI bind |
@@ -257,7 +258,12 @@ required.
 
 ## Web UI Features
 
-- **Tab bar** — `Chat`, `Batch`, `File Viewer`, `App Logs`, `README`.
+- **Tab bar** — `Chat`, `Batch`, `File Viewer`, `Agent Workspace`, `App Logs`, `README`.
+- **Agent Workspace tab** — read-only browser over the application folder (`WORKSPACE_ROOT`, default the app
+  root) and its subfolders, with breadcrumbs and a text preview (1 MB cap, binaries not shown). `.git*` files and
+  folders (`.git`, `.gitignore`, `.gitkeep`, …), `.venv`,
+  caches and secret-like files (`.env*`, `*.pem`, `*.key`, `credentials.json`, `secrets.*`) are hidden and
+  unreadable. In a container the root is `/app`, so it also shows the mounted `agent/`, `input/`, `output/`.
 - **Chat tab** — streaming chat bubbles with `[You]` / `[AI]` labels; tool calls inline, collapsed by default.
 - **Batch tab** — status badge, **Job Pack** select + **Load**, metrics chip, Run / Stop / Reset, live SSE
   terminal, and a collapsible history of the last 20 runs.
@@ -282,6 +288,7 @@ Unchanged from pydantic-assistant. `GET /` serves the UI and `GET /api/readme` t
 | `GET /api/jobpacks` · `POST /api/jobpacks/load` | Job packs |
 | `GET /api/{agent,input,output}` · `DELETE /api/{input,output}` | List / clear a folder |
 | `GET\|PUT\|DELETE /api/file/<folder>/<path>` · `POST /api/file/{agent,input}` · `POST /api/upload/{agent,input}` | File read / write / create / upload (agent + input only for writes) |
+| `GET /api/workspace?path=` · `GET /api/workspace/file?path=` | Agent Workspace: list a folder / read a file (read-only) |
 | `GET /api/app-logs` (SSE) | Application log stream |
 | `GET /api/providers` · `GET\|POST /api/provider` · `GET /api/models` · `GET\|POST /api/model` | Provider / model |
 | `GET\|POST /api/keys` · `GET\|POST /api/settings` · `GET\|POST /api/tools` | Keys (presence only), settings, tool permissions |
