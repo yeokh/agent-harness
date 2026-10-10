@@ -20,7 +20,7 @@ spec:
         # reachable except through the oauth-proxy sidecar below, which is
         # the only container exposing a port outside the pod.
         - name: adk-assistant
-          image: quay.io/kenghua_yeo/adk-assistant:v1
+          image: quay.io/kenghua_yeo/adk-assistant:latest
           ports:
             - containerPort: 8081
               protocol: TCP

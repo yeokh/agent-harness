@@ -162,3 +162,27 @@ def test_extra_system_prompt(client):
     assert client.post("/api/settings", json={"extra_system_prompt": "x" * 9000}).status_code == 400
     client.post("/api/settings", json={"extra_system_prompt": ""})
     assert "ADDITIONAL SYSTEM PROMPT" not in client.web.adk_core.build_system_prompt("INSTR")
+
+
+def test_override_system_prompt(client):
+    core = client.web.adk_core
+    s = client.get("/api/settings").json()
+    assert s["override_system_prompt_enabled"] is False
+    assert "Data security policy" in s["default_system_prompt"]
+    assert "INSTRUCTIONS:" not in s["default_system_prompt"]
+    client.post("/api/settings", json={"extra_system_prompt": "EXTRA"})
+    r = client.post("/api/settings", json={
+        "override_system_prompt": "  You are a pirate.  ", "override_system_prompt_enabled": True})
+    assert r.json()["override_system_prompt_enabled"] is True
+    prompt = core.build_system_prompt("INSTR")
+    assert prompt == "You are a pirate.\n\nINSTRUCTIONS:\nINSTR"
+    # enabled but empty override falls back to the built-in prompt
+    client.post("/api/settings", json={"override_system_prompt": ""})
+    assert "Data security policy" in core.build_system_prompt("INSTR")
+    assert client.post("/api/settings", json={"override_system_prompt": "x" * 9000}).status_code == 400
+    # disabling restores the add-prompt behaviour, override text kept
+    client.post("/api/settings", json={"override_system_prompt": "Keep me", "override_system_prompt_enabled": False})
+    prompt = core.build_system_prompt("INSTR")
+    assert "Keep me" not in prompt and "<<<BEGIN ADDITIONAL SYSTEM PROMPT>>>\nEXTRA\n" in prompt
+    assert client.get("/api/settings").json()["override_system_prompt"] == "Keep me"
+    client.post("/api/settings", json={"extra_system_prompt": "", "override_system_prompt": ""})

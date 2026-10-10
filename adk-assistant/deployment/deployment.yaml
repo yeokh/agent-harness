@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: adk-assistant
-          image: quay.io/kenghua_yeo/adk-assistant:v1
+          image: quay.io/kenghua_yeo/adk-assistant:latest
           ports:
             - containerPort: 8081
               protocol: TCP

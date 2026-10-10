@@ -185,7 +185,7 @@ parameters:
 
   - name: IMAGE_NAME
     displayName: Container image
-    value: quay.io/kenghua_yeo/adk-assistant:v1
+    value: quay.io/kenghua_yeo/adk-assistant:latest
     required: true
 
   - name: PORT

@@ -419,6 +419,7 @@ main { flex: 1; display: flex; min-height: 0; }
 .ln-asst   { color: #e2e8f0; }
 
 /* Agent/Input file edit modal */
+#settings-modal .modal { width: 630px; max-width: 96vw; }
 #agent-edit-modal .modal { width: 620px; max-width: 96vw; }
 #agent-modal-content, #set-extra-prompt {
   width: 100%; height: 280px; resize: vertical;
@@ -739,9 +740,14 @@ main { flex: 1; display: flex; min-height: 0; }
       <input type="checkbox" id="set-allow-shell">
       <label for="set-allow-shell" style="margin:0">Allow shell commands (run_command)</label>
     </div>
-    <label>Add System Prompt</label>
+    <label id="set-prompt-label" for="set-extra-prompt">Add System Prompt</label>
+    <div class="check">
+      <input type="checkbox" id="set-override-prompt">
+      <label for="set-override-prompt" style="margin:0">Overwrite system prompt (replace the built-in prompt entirely)</label>
+    </div>
     <textarea id="set-extra-prompt" style="height:110px" spellcheck="false" placeholder="Optional. e.g. Always answer in British English and keep reports under one page."></textarea>
-    <div class="hint">Added to the built system prompt for Chat and Batch, in a block labelled "ADDITIONAL SYSTEM PROMPT". It cannot override the data-security rules. Kept in server memory only; leave empty for none.</div>
+    <div class="hint" id="set-prompt-hint"></div>
+    <button type="button" id="set-reset-prompt" style="display:none;margin-top:6px">Reset to default</button>
     <div class="row">
       <button id="settings-cancel-btn">Cancel</button>
       <button class="primary" id="settings-save-btn">Save</button>
@@ -2043,6 +2049,35 @@ $("tools-save-btn").onclick = async () => {
 };
 
 // ── Settings modal ────────────────────────────────────────────────────────────
+// One textarea serves two prompts: the "Add System Prompt" text and, when the
+// override box is ticked, the full replacement prompt. Each keeps its own value.
+const promptState = { extra: "", override: "", dflt: "", overrideOn: false };
+const HINT_EXTRA = 'Added to the built system prompt for Chat and Batch, in a block labelled "ADDITIONAL SYSTEM PROMPT". It cannot override the data-security rules. Kept in server memory only; leave empty for none.';
+const HINT_OVERRIDE = 'Replaces the built-in system prompt entirely for Chat and Batch; only instruction.md is still appended. WARNING: the data-security rules (untrusted input/web data, prompt-injection handling) and tool list are removed unless you keep them in this text. Kept in server memory only.';
+
+function renderPromptMode() {
+  const on = promptState.overrideOn;
+  $("set-override-prompt").checked = on;
+  $("set-prompt-label").textContent = on ? "System Prompt (override)" : "Add System Prompt";
+  $("set-extra-prompt").value = on ? promptState.override : promptState.extra;
+  $("set-extra-prompt").style.height = on ? "260px" : "110px";
+  $("set-prompt-hint").textContent = on ? HINT_OVERRIDE : HINT_EXTRA;
+  $("set-reset-prompt").style.display = on ? "" : "none";
+}
+function syncPromptText() {
+  promptState[promptState.overrideOn ? "override" : "extra"] = $("set-extra-prompt").value;
+}
+$("set-override-prompt").onchange = () => {
+  syncPromptText();
+  promptState.overrideOn = $("set-override-prompt").checked;
+  if (promptState.overrideOn && !promptState.override.trim()) promptState.override = promptState.dflt;
+  renderPromptMode();
+};
+$("set-reset-prompt").onclick = () => {
+  promptState.override = promptState.dflt;
+  $("set-extra-prompt").value = promptState.dflt;
+};
+
 $("settings-btn").onclick = async () => {
   try {
     const s = await api("/api/settings");
@@ -2050,14 +2085,20 @@ $("settings-btn").onclick = async () => {
     $("set-max-tokens").value  = s.max_output_tokens;
     $("set-shell-timeout").value = s.shell_timeout;
     $("set-allow-shell").checked = s.allow_shell;
-    $("set-extra-prompt").value  = s.extra_system_prompt || "";
     $("set-extra-prompt").maxLength = s.extra_system_prompt_max || 8000;
+    promptState.extra      = s.extra_system_prompt || "";
+    promptState.override   = s.override_system_prompt || "";
+    promptState.dflt       = s.default_system_prompt || "";
+    promptState.overrideOn = !!s.override_system_prompt_enabled;
+    if (promptState.overrideOn && !promptState.override.trim()) promptState.override = promptState.dflt;
+    renderPromptMode();
     $("settings-modal").classList.add("open");
   } catch (e) { toast(e.message, "error"); }
 };
 $("settings-cancel-btn").onclick = () => $("settings-modal").classList.remove("open");
 $("settings-save-btn").onclick   = async () => {
   try {
+    syncPromptText();
     await api("/api/settings", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -2065,7 +2106,9 @@ $("settings-save-btn").onclick   = async () => {
         max_output_tokens: parseInt($("set-max-tokens").value, 10),
         shell_timeout:    parseInt($("set-shell-timeout").value, 10),
         allow_shell:      $("set-allow-shell").checked,
-        extra_system_prompt: $("set-extra-prompt").value,
+        extra_system_prompt: promptState.extra,
+        override_system_prompt: promptState.override,
+        override_system_prompt_enabled: promptState.overrideOn,
       }),
     });
     $("settings-modal").classList.remove("open");

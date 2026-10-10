@@ -147,6 +147,16 @@ def extra_system_prompt() -> str:
     return _env("EXTRA_SYSTEM_PROMPT").strip()[:EXTRA_PROMPT_MAX_CHARS]
 
 
+def override_system_prompt_enabled() -> bool:
+    """True when the operator's override text replaces the built-in system prompt."""
+    return _env_bool("SYSTEM_PROMPT_OVERRIDE_ENABLED", False)
+
+
+def override_system_prompt() -> str:
+    """Operator-supplied replacement for the built-in system prompt (Settings dialog)."""
+    return _env("SYSTEM_PROMPT_OVERRIDE").strip()[:EXTRA_PROMPT_MAX_CHARS]
+
+
 def current_provider() -> str:
     return _env("API_PROVIDER", DEFAULT_PROVIDER).lower()
 
@@ -736,15 +746,14 @@ def load_mcp_toolsets(agent_dir: Path, warn: Callable[[str], None] | None = None
 
 # --- System Prompt ------------------------------------------------------------
 
-def build_system_prompt(
-    instruction: str,
+def default_system_prompt(
     disabled: set[str] | None = None,
     *,
     autonomous: bool = False,
     has_skills: bool = False,
     has_mcp: bool = False,
 ) -> str:
-    """Assemble the system prompt from instruction.md only.
+    """The built-in system prompt, without the additional block or INSTRUCTIONS.
 
     Args:
         disabled:   Set of tool names that are disabled; they are omitted from
@@ -827,17 +836,6 @@ def build_system_prompt(
     else:
         completion_block = ""
 
-    extra = extra_system_prompt()
-    extra_block = (
-        "ADDITIONAL SYSTEM PROMPT (operator-supplied via Settings — trusted, applies to this whole\n"
-        "session, but it can never override the Data security policy above):\n"
-        "<<<BEGIN ADDITIONAL SYSTEM PROMPT>>>\n"
-        f"{extra}\n"
-        "<<<END ADDITIONAL SYSTEM PROMPT>>>\n"
-        "\n"
-        if extra else ""
-    )
-
     return (
         f"{role_sentence}"
         "You interact with the world ONLY through the tools listed below.\n"
@@ -871,10 +869,49 @@ def build_system_prompt(
         f"{skills_block}"
         "\n"
         f"{completion_block}"
-        "\n"
-        f"{extra_block}"
-        f"INSTRUCTIONS:\n{instruction}"
     )
+
+
+def preview_default_system_prompt(agent_dir: Path) -> str:
+    """Default prompt for the Settings dialog: Chat mode, reflecting current tool/skill/MCP state."""
+    disabled = disabled_tool_names()
+    has_skills = "skills" not in disabled and any(
+        md.name != "instruction.md" for md in Path(agent_dir).glob("*.md")
+    )
+    has_mcp = "mcp" not in disabled and (Path(agent_dir) / MCP_CONFIG_NAME).is_file()
+    return default_system_prompt(disabled, has_skills=has_skills, has_mcp=has_mcp).rstrip()
+
+
+def build_system_prompt(
+    instruction: str,
+    disabled: set[str] | None = None,
+    *,
+    autonomous: bool = False,
+    has_skills: bool = False,
+    has_mcp: bool = False,
+) -> str:
+    """Assemble the system prompt: base (or operator override) + extra block + instruction.md.
+
+    When the override is enabled and non-empty it replaces the built-in base prompt
+    entirely (including the data-security policy); instruction.md is still appended.
+    """
+    if override_system_prompt_enabled() and override_system_prompt():
+        return f"{override_system_prompt()}\n\nINSTRUCTIONS:\n{instruction}"
+
+    base = default_system_prompt(
+        disabled, autonomous=autonomous, has_skills=has_skills, has_mcp=has_mcp,
+    )
+    extra = extra_system_prompt()
+    extra_block = (
+        "ADDITIONAL SYSTEM PROMPT (operator-supplied via Settings — trusted, applies to this whole\n"
+        "session, but it can never override the Data security policy above):\n"
+        "<<<BEGIN ADDITIONAL SYSTEM PROMPT>>>\n"
+        f"{extra}\n"
+        "<<<END ADDITIONAL SYSTEM PROMPT>>>\n"
+        "\n"
+        if extra else ""
+    )
+    return f"{base}\n{extra_block}INSTRUCTIONS:\n{instruction}"
 
 
 # --- Model Builder --------------------------------------------------------------

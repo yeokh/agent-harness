@@ -246,6 +246,7 @@ python web_app.py
 | `ALLOW_PRIVATE_FETCH` | `false` | `true` lets `web_fetch` reach private/loopback addresses |
 | `ALLOW_MCP_STDIO` | follows `ALLOW_SHELL` | Allow stdio MCP servers |
 | `EXTRA_SYSTEM_PROMPT` | _(empty)_ | Additional system prompt block (also editable in Settings) |
+| `SYSTEM_PROMPT_OVERRIDE_ENABLED` / `SYSTEM_PROMPT_OVERRIDE` | `false` / _(empty)_ | Replace the built-in system prompt entirely (also in Settings) |
 | `DISABLED_TOOLS` | _(empty)_ | Comma-separated tool names to remove (e.g. `run_command,web_fetch,skills,mcp`) |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | — | Enable OpenTelemetry export (needs the `otel` extra) |
 | `AGENT_DIR` / `INPUT_DIR` / `OUTPUT_DIR` | `./agent` `./input` `./output` | Folder paths |
@@ -277,6 +278,8 @@ required.
   extra operator instructions (max 8000 chars, held in memory, or `EXTRA_SYSTEM_PROMPT`) that are appended to the
   built system prompt for Chat and Batch inside a clearly labelled `ADDITIONAL SYSTEM PROMPT` block, placed after
   the data-security policy so it cannot override it.
+  Tick **Overwrite system prompt** to replace the built-in prompt entirely (the box is pre-filled with the default;
+  **Reset to default** restores it). `instruction.md` is still appended; the data-security rules are removed unless kept in your text.
 - **API Keys dialog (🔑)** — enter keys per provider (and the OpenAI-compatible base URL); held in server memory only, never written to disk or
   returned to the browser.
 

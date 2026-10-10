@@ -36,6 +36,8 @@ Environment variables:
     ALLOW_PRIVATE_FETCH   set true to let web_fetch reach private/loopback addresses (default false)
     ALLOW_MCP_STDIO       allow stdio MCP servers from agent/mcp.json (default: follows ALLOW_SHELL)
     EXTRA_SYSTEM_PROMPT   additional operator system prompt appended to the built prompt (also set in Settings)
+    SYSTEM_PROMPT_OVERRIDE_ENABLED / SYSTEM_PROMPT_OVERRIDE
+                          replace the built-in system prompt entirely (instruction.md is still appended)
     DISABLED_TOOLS        comma-separated tool names to remove from the agent
     OTEL_EXPORTER_OTLP_ENDPOINT  enable OpenTelemetry export (needs the `otel` extra)
     AGENT_DIR / INPUT_DIR / OUTPUT_DIR   folder overrides (default ./agent, ./input, ./output)
@@ -1296,6 +1298,9 @@ async def api_get_settings():
         "openai_base_url": os.environ.get("OPENAI_BASE_URL", adk_core.DEFAULT_OPENAI_BASE_URL),
         "extra_system_prompt": adk_core.extra_system_prompt(),
         "extra_system_prompt_max": adk_core.EXTRA_PROMPT_MAX_CHARS,
+        "override_system_prompt_enabled": adk_core.override_system_prompt_enabled(),
+        "override_system_prompt": adk_core.override_system_prompt(),
+        "default_system_prompt": adk_core.preview_default_system_prompt(AGENT_DIR),
     }
 
 
@@ -1318,6 +1323,15 @@ async def api_set_settings(request: Request):
             return _err(f"extra_system_prompt is limited to {adk_core.EXTRA_PROMPT_MAX_CHARS} characters", 400)
         os.environ["EXTRA_SYSTEM_PROMPT"] = text
         log.info("Additional system prompt %s", f"set ({len(text)} chars)" if text else "cleared")
+    if "override_system_prompt" in data:
+        text = str(data["override_system_prompt"]).strip()
+        if len(text) > adk_core.EXTRA_PROMPT_MAX_CHARS:
+            return _err(f"override_system_prompt is limited to {adk_core.EXTRA_PROMPT_MAX_CHARS} characters", 400)
+        os.environ["SYSTEM_PROMPT_OVERRIDE"] = text
+    if "override_system_prompt_enabled" in data:
+        enabled = bool(data["override_system_prompt_enabled"])
+        os.environ["SYSTEM_PROMPT_OVERRIDE_ENABLED"] = "true" if enabled else "false"
+        log.info("System prompt override %s", "enabled" if enabled else "disabled")
     if "allow_shell" in data:
         os.environ["ALLOW_SHELL"] = "true" if data["allow_shell"] else "false"
     if "openai_base_url" in data:
