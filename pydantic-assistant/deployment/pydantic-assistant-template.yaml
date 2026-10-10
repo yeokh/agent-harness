@@ -189,7 +189,7 @@ parameters:
   - name: IMAGE_NAME
     displayName: Container image
     description: Full pullspec of the image to deploy.
-    value: quay.io/kenghua_yeo/pydantic-assistant:v1
+    value: quay.io/kenghua_yeo/pydantic-assistant:latest
     required: true
 
   - name: PORT

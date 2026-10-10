@@ -41,6 +41,27 @@ podman login quay.io
 podman push quay.io/kenghua_yeo/pydantic-assistant:v1
 ```
 
+Tag to :latest with:
+podman build -t quay.io/org/app:v1 -t quay.io/org/app:latest
+
+
+How to handle CVEs found in image:
+1. Rebuild each image with podman build --pull=always (or --no-cache), so you get the newest base image ubi9/python-312 tag. 
+Red Hat usually rebuilds the base image within days of an errata. 
+
+2. If the base is still stale, you can add a patch layer as a stopgap by adding the following before USER 1001:
+RUN dnf -y upgrade --security && dnf clean all
+
+3. Hardening if the CVEs related to specific packages are identified:
+   - Remove packages not required at runtime.
+     For example, remove GNU Debugger packages with RUN dnf -y remove gdb gdb-headless gdb-gdbserver.
+   - Switch to ubi9/python-312-minimal or Red Hat hardened images:
+     FROM registry.access.redhat.com/hi/python:3.12-builder AS builder
+     # build/install step: this variant includes a shell
+     FROM registry.access.redhat.com/hi/python:3.12
+     # runtime: usually no shell
+   - Use multi-stage build and copy only the required packages into the minimal image.
+
 ---
 
 ## 2. Run locally with rootless Podman

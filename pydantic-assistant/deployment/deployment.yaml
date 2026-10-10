@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: pydantic-assistant
-          image: quay.io/kenghua_yeo/pydantic-assistant:v1
+          image: quay.io/kenghua_yeo/pydantic-assistant:latest
           ports:
             - containerPort: 8081
               protocol: TCP

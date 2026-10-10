@@ -19,6 +19,11 @@ COPY sample-jobs/ sample-jobs/
 
 RUN pip install --no-cache-dir .
 
+# Remove any redundant packages if any not required, for example, any '*-devel' packages.
+# However, AI agent that generate, test and run codes may require this.
+# RUN dnf -y remove gdb gdb-headless gdb-gdbserver expat-devel
+
+# Set up application environment
 RUN mkdir -p /app/agent /app/input /app/output && \
     chown -R 1001:0 /app && \
     chmod -R g=u /app
@@ -28,8 +33,8 @@ ENV AGENT_DIR=/app/agent \
     OUTPUT_DIR=/app/output \
     JOBS_DIR=/app/sample-jobs \
     API_PROVIDER=openai-compatible \
-    MODEL=llama3.2 \
-    MAX_TURNS=50 \
+    MODEL=qwen38-27b \
+    MAX_TURNS=20 \
     MAX_OUTPUT_TOKENS=16384 \
     ALLOW_SHELL=true \
     SHELL_TIMEOUT=60 \
