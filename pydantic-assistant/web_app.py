@@ -89,6 +89,9 @@ NO_KEY_PROVIDERS = {"openai-compatible"}
 # Session-only system prompt text (not persisted to disk or env).
 _session_system_prompt = ""
 _session_system_prompt_lock = threading.Lock()
+# Full-replacement prompt (session-only). Applied only while the flag is on.
+_override_prompt = ""
+_override_enabled = False
 
 # Workspace browser: hide VCS, venvs, caches, and secret-like names under project root.
 _WORKSPACE_HIDDEN_DIR_NAMES = {
@@ -447,6 +450,12 @@ def _set_session_system_prompt(text: str) -> str:
         return _session_system_prompt
 
 
+def _get_override_prompt() -> str:
+    """Active override text, or "" when the override is off or empty."""
+    with _session_system_prompt_lock:
+        return _override_prompt.strip() if _override_enabled else ""
+
+
 def _run_chat_thread(
     user_message: str,
     prev_model_messages: list,
@@ -478,6 +487,7 @@ def _run_chat_thread(
                 event_callback=on_event,
                 cancel_event=chat_session.cancel_event,
                 extra_system_prompt=_get_session_system_prompt(),
+                override_system_prompt=_get_override_prompt(),
             )
         )
         chat_session.update_model_messages(new_messages)
@@ -536,6 +546,7 @@ def _run_batch_thread() -> None:
                     AGENT_DIR, INPUT_DIR, OUTPUT_DIR, instruction,
                     log_callback=_log, stats_out=stats_out, cancel_event=_batch_cancel_event,
                     extra_system_prompt=_get_session_system_prompt(),
+                    override_system_prompt=_get_override_prompt(),
                 )
             )
 
@@ -1284,6 +1295,10 @@ def api_get_settings():
         "allow_shell": os.environ.get("ALLOW_SHELL", "true").lower() not in ("0", "false", "no", "off"),
         "shell_timeout": int(os.environ.get("SHELL_TIMEOUT", "60") or 60),
         "system_prompt": _get_session_system_prompt(),
+        "override_system_prompt_enabled": _override_enabled,
+        "override_system_prompt": _override_prompt,
+        "default_system_prompt": agent_core.default_system_prompt(
+            agent_core.disabled_tool_names()).rstrip(),
     })
 
 
@@ -1310,6 +1325,11 @@ def api_set_settings():
     if "system_prompt" in data:
         # Session-only — never written to disk or process env.
         _set_session_system_prompt(str(data.get("system_prompt") or ""))
+    global _override_prompt, _override_enabled
+    if "override_system_prompt" in data:
+        _override_prompt = str(data.get("override_system_prompt") or "").strip()
+    if "override_system_prompt_enabled" in data:
+        _override_enabled = bool(data["override_system_prompt_enabled"])
     # Legacy clients may still POST openai_base_url here.
     if "openai_base_url" in data:
         os.environ["OPENAI_BASE_URL"] = str(data["openai_base_url"]).strip()

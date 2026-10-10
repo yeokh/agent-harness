@@ -253,6 +253,9 @@ restart required.
   category (Agent Files, Input Files, Output Files, System, Web). Applies to both modes.
 - **Settings dialog (⚙)** — max turns, max output tokens, shell timeout, allow-shell toggle,
   OpenAI-compatible base URL.
+  Tick **Overwrite system prompt** to replace the built-in prompt entirely (the box is pre-filled with the default;
+  **Reset to default** restores it). `instruction.md` is still appended; File access / Data security rules are removed
+  unless kept in your text. Session-only.
 - **API Keys dialog (🔑)** — enter keys per provider; keys are held in server memory only, never written
   to disk or returned to the browser.
 - **Resizable sidebar** — drag the dividers between the Agent / Input / Output panels.

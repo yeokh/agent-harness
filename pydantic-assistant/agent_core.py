@@ -359,14 +359,12 @@ def _make_tools(
 
 # --- System Prompt ------------------------------------------------------------
 
-def build_system_prompt(
-    instruction: str,
+def default_system_prompt(
     disabled: set[str] | None = None,
     *,
     autonomous: bool = False,
-    extra_system_prompt: str = "",
 ) -> str:
-    """Assemble the system prompt from instruction.md (and optional session text).
+    """The built-in system prompt, without INSTRUCTIONS or the session block.
 
     Args:
         disabled:   Set of tool names that are disabled; they are omitted from
@@ -374,8 +372,6 @@ def build_system_prompt(
         autonomous: True for a Batch run (one-shot, unattended); False for an
                     interactive Chat turn. Only affects the framing sentence —
                     the tool set, file policy, and safety rules are identical.
-        extra_system_prompt: Optional session-only text appended in a labelled
-                    block. It must not override File access or Data security policy.
     """
     disabled = disabled or set()
 
@@ -437,7 +433,7 @@ def build_system_prompt(
     else:
         completion_block = ""
 
-    prompt = (
+    return (
         f"{role_sentence}"
         "You interact with the world ONLY through the tools listed below.\n"
         "\n"
@@ -466,7 +462,33 @@ def build_system_prompt(
         f"{shell_block}"
         "\n"
         f"{completion_block}"
-        "\n"
+    )
+
+
+def build_system_prompt(
+    instruction: str,
+    disabled: set[str] | None = None,
+    *,
+    autonomous: bool = False,
+    extra_system_prompt: str = "",
+    override_system_prompt: str = "",
+) -> str:
+    """Assemble the system prompt from the base prompt, instruction.md and session text.
+
+    Args:
+        disabled, autonomous: see default_system_prompt().
+        extra_system_prompt: Optional session-only text appended in a labelled
+                    block. It must not override File access or Data security policy.
+        override_system_prompt: If non-empty, replaces the built-in base prompt
+                    entirely (including the safety policies); instruction.md is
+                    still appended and extra_system_prompt is not used.
+    """
+    override = (override_system_prompt or "").strip()
+    if override:
+        return f"{override}\n\nINSTRUCTIONS:\n{instruction}"
+
+    prompt = (
+        f"{default_system_prompt(disabled, autonomous=autonomous)}\n"
         f"INSTRUCTIONS:\n{instruction}"
     )
     extra = (extra_system_prompt or "").strip()
@@ -577,6 +599,7 @@ async def run_chat_turn(
     event_callback: Callable[[dict], None] | None = None,
     cancel_event=None,
     extra_system_prompt: str = "",
+    override_system_prompt: str = "",
 ) -> list:
     """Run one interactive chat turn. Returns the updated full message history.
 
@@ -591,6 +614,7 @@ async def run_chat_turn(
                         Event types: delta, tool_use, tool_result, done, error.
         cancel_event:   threading.Event; set it to request cancellation.
         extra_system_prompt: Optional session-only text appended to the system prompt.
+        override_system_prompt: If non-empty, replaces the built-in system prompt (instruction.md still appended).
 
     Returns:
         Updated list of ModelMessage covering the full conversation so far.
@@ -615,6 +639,7 @@ async def run_chat_turn(
         disabled=disabled,
         autonomous=False,
         extra_system_prompt=extra_system_prompt,
+        override_system_prompt=override_system_prompt,
     )
 
     agent = Agent(
@@ -718,6 +743,7 @@ async def run_batch(
     stats_out: dict | None = None,
     cancel_event=None,
     extra_system_prompt: str = "",
+    override_system_prompt: str = "",
 ) -> None:
     """Run the agent once, autonomously, from a single kickoff prompt.
 
@@ -752,6 +778,7 @@ async def run_batch(
         disabled=disabled,
         autonomous=True,
         extra_system_prompt=extra_system_prompt,
+        override_system_prompt=override_system_prompt,
     )
 
     emit(

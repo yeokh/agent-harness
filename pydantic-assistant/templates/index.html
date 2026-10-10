@@ -752,11 +752,16 @@ main { flex: 1; display: flex; min-height: 0; }
       <input type="checkbox" id="set-allow-shell">
       <label for="set-allow-shell" style="margin:0">Allow shell commands (run_command)</label>
     </div>
-    <label>System Prompt (session only)</label>
+    <label id="set-prompt-label" for="set-system-prompt">System Prompt (session only)</label>
+    <div class="check">
+      <input type="checkbox" id="set-override-prompt">
+      <label for="set-override-prompt" style="margin:0">Overwrite system prompt (replace the built-in prompt entirely)</label>
+    </div>
     <textarea id="set-system-prompt" rows="6" spellcheck="false"
       placeholder="Optional extra guidance appended to the system prompt for this server session…"
       style="width:100%;resize:vertical;font:12.5px/1.45 Consolas,'Courier New',monospace"></textarea>
-    <div class="hint">Not persisted. Appended in a labelled block that cannot override File access or Data security rules. Cleared when the server restarts.</div>
+    <div class="hint" id="set-prompt-hint"></div>
+    <button type="button" id="set-reset-prompt" style="display:none;margin-top:6px">Reset to default</button>
     <div class="row">
       <button id="settings-cancel-btn">Cancel</button>
       <button class="primary" id="settings-save-btn">Save</button>
@@ -1983,6 +1988,35 @@ $("tools-save-btn").onclick = async () => {
 };
 
 // ── Settings modal ────────────────────────────────────────────────────────────
+// One textarea serves two prompts: the session extra text and, when the override
+// box is ticked, the full replacement prompt. Each keeps its own value.
+const promptState = { extra: "", override: "", dflt: "", overrideOn: false };
+const HINT_EXTRA = "Not persisted. Appended in a labelled block that cannot override File access or Data security rules. Cleared when the server restarts.";
+const HINT_OVERRIDE = "Replaces the built-in system prompt entirely for Chat and Batch; only instruction.md is still appended. WARNING: the File access and Data security rules (untrusted input/web data, prompt-injection handling) and the tool list are removed unless you keep them in this text. Not persisted; cleared when the server restarts.";
+
+function renderPromptMode() {
+  const on = promptState.overrideOn;
+  $("set-override-prompt").checked = on;
+  $("set-prompt-label").textContent = on ? "System Prompt (override)" : "System Prompt (session only)";
+  $("set-system-prompt").value = on ? promptState.override : promptState.extra;
+  $("set-system-prompt").rows = on ? 14 : 6;
+  $("set-prompt-hint").textContent = on ? HINT_OVERRIDE : HINT_EXTRA;
+  $("set-reset-prompt").style.display = on ? "" : "none";
+}
+function syncPromptText() {
+  promptState[promptState.overrideOn ? "override" : "extra"] = $("set-system-prompt").value;
+}
+$("set-override-prompt").onchange = () => {
+  syncPromptText();
+  promptState.overrideOn = $("set-override-prompt").checked;
+  if (promptState.overrideOn && !promptState.override.trim()) promptState.override = promptState.dflt;
+  renderPromptMode();
+};
+$("set-reset-prompt").onclick = () => {
+  promptState.override = promptState.dflt;
+  $("set-system-prompt").value = promptState.dflt;
+};
+
 $("settings-btn").onclick = async () => {
   try {
     const s = await api("/api/settings");
@@ -1990,13 +2024,19 @@ $("settings-btn").onclick = async () => {
     $("set-max-tokens").value    = s.max_output_tokens;
     $("set-shell-timeout").value = s.shell_timeout;
     $("set-allow-shell").checked = s.allow_shell;
-    $("set-system-prompt").value = s.system_prompt || "";
+    promptState.extra      = s.system_prompt || "";
+    promptState.override   = s.override_system_prompt || "";
+    promptState.dflt       = s.default_system_prompt || "";
+    promptState.overrideOn = !!s.override_system_prompt_enabled;
+    if (promptState.overrideOn && !promptState.override.trim()) promptState.override = promptState.dflt;
+    renderPromptMode();
     $("settings-modal").classList.add("open");
   } catch (e) { toast(e.message, "error"); }
 };
 $("settings-cancel-btn").onclick = () => $("settings-modal").classList.remove("open");
 $("settings-save-btn").onclick   = async () => {
   try {
+    syncPromptText();
     await api("/api/settings", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -2004,7 +2044,9 @@ $("settings-save-btn").onclick   = async () => {
         max_output_tokens: parseInt($("set-max-tokens").value, 10),
         shell_timeout:     parseInt($("set-shell-timeout").value, 10),
         allow_shell:       $("set-allow-shell").checked,
-        system_prompt:     $("set-system-prompt").value,
+        system_prompt:     promptState.extra,
+        override_system_prompt: promptState.override,
+        override_system_prompt_enabled: promptState.overrideOn,
       }),
     });
     $("settings-modal").classList.remove("open");
