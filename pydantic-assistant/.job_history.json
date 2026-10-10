@@ -1,0 +1,15 @@
+[
+  {
+    "run_id": "2026-10-03T14:30:05.877571+00:00",
+    "status": "completed",
+    "provider": "openai",
+    "model": "gpt-5-mini",
+    "duration_seconds": 94.229769,
+    "total_turns": 6,
+    "total_cost_usd": null,
+    "total_input_tokens": 50857,
+    "total_output_tokens": 9233,
+    "log_lines": 31,
+    "output_files": 6
+  }
+]

@@ -32,3 +32,5 @@ tmp/
 temp/
 .cache/
 node_modules/
+
+*.egg-info/

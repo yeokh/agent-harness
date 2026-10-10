@@ -1,12 +1,9 @@
-Recommended monitoring alerts:
-- Memory usage > 75% (JVM)
-- Database connection pool > 90% utilization
-- Disk I/O errors detected
-- AppArmor denied operations
-- SYN flood detection on port 8080
-- Database query duration > 1000ms
-- Order validation errors
-- Cache hit rate < 60%
-- Java process termination events
-- Backup job failures
-- System OOM kill events
+Suggested alerts and metrics:
+- Host memory usage > 80% for 5 minutes -> Alert / Auto-restart prevention
+- OOM events or kernel OOM killer invocations -> Pager
+- Database connection pool usage > 75% -> Warn; >90% -> Critical
+- Error rate > 1% of requests for 5 minutes -> Alert
+- Slow query duration > 2s on critical endpoints -> Alert
+- Disk I/O errors or ext4 I/O error occurrences -> Alert
+- Rate of 4xx/5xx responses increasing beyond baseline -> Alert
+- Backup job I/O and duration metrics -> Monitor and correlate with host I/O spikes
