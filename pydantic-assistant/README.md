@@ -206,7 +206,7 @@ python web_app.py
 | `OPENAI_API_KEY` | — | OpenAI key (openai provider only; pinned to api.openai.com) |
 | `OPENROUTER_API_KEY` | — | OpenRouter API key |
 | `OPENAI_COMPATIBLE_API_KEY` | — | Optional bearer for `openai-compatible` endpoints |
-| `OPENAI_BASE_URL` | `http://localhost:11434/v1` | Base URL for `openai-compatible` provider only |
+| `OPENAI_BASE_URL` | _(unset)_ | Base URL for `openai-compatible` provider only |
 | `MAX_TURNS` | `20` | Maximum tool-call loop iterations per Chat turn or per Batch run |
 | `MAX_OUTPUT_TOKENS` | `16384` | Token budget for each model response |
 | `ALLOW_SHELL` | `true` | Set `false` to block `run_command` entirely |

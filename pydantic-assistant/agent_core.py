@@ -558,7 +558,9 @@ def _build_model(provider: str, model_id: str, *, max_tokens: int):
     if provider == "openai-compatible":
         from pydantic_ai.models.openai import OpenAIChatModel
         from pydantic_ai.providers.openai import OpenAIProvider
-        base_url = _env("OPENAI_BASE_URL", "http://localhost:11434/v1").rstrip("/")
+        base_url = _env("OPENAI_BASE_URL").rstrip("/")
+        if not base_url:
+            raise RuntimeError("OPENAI_BASE_URL is not set for the openai-compatible provider")
         api_key = _env("OPENAI_COMPATIBLE_API_KEY") or "local"
         return OpenAIChatModel(
             model_id,

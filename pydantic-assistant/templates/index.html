@@ -1783,15 +1783,18 @@ async function loadProviders() {
   }
 }
 
+let modelsReq = 0;
 async function loadModels() {
   const provider = $("provider-select").value;
   const sel = $("model-select");
+  const req = ++modelsReq;
   sel.innerHTML = "<option>loading...</option>";
   try {
     const [md, cur] = await Promise.all([
       api(`/api/models?provider=${encodeURIComponent(provider)}`),
       api("/api/model"),
     ]);
+    if (req !== modelsReq) return; // superseded by a newer provider selection
     sel.innerHTML = "";
     const models = (md.models || []).sort((a, b) => (a.name || a.id).localeCompare(b.name || b.id));
     if (!models.length) {
@@ -1814,7 +1817,7 @@ async function loadModels() {
         body: JSON.stringify({ model: sel.value }),
       });
     }
-  } catch { sel.innerHTML = "<option>unavailable</option>"; }
+  } catch { if (req === modelsReq) sel.innerHTML = "<option>unavailable</option>"; }
 }
 
 $("provider-select").onchange = async () => {
@@ -1851,7 +1854,7 @@ function updateKeyEnvHint(provider) {
   const showBase = provider === "openai-compatible";
   $("key-base-url-block").style.display = showBase ? "" : "none";
   if (showBase) {
-    $("key-base-url").value = keyStatus.openai_base_url || "http://localhost:11434/v1";
+    $("key-base-url").value = keyStatus.openai_base_url || "";
   }
   $("key-input-label").textContent = showBase ? "API key (optional)" : "API key";
 }
@@ -1900,7 +1903,7 @@ $("key-save-btn").onclick   = async () => {
       ? "Base URL saved"
       : `API key saved for ${provider}`);
     await checkKeys(false);
-    await loadModels();
+    if (provider === $("provider-select").value) await loadModels();
   } catch (e) { toast(e.message, "error"); }
 };
 

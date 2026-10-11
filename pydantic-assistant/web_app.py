@@ -20,7 +20,7 @@ Environment variables:
     OPENAI_API_KEY              OpenAI provider key
     OPENROUTER_API_KEY          OpenRouter provider key
     OPENAI_COMPATIBLE_API_KEY   Optional bearer for openai-compatible endpoints
-    OPENAI_BASE_URL             OpenAI-compatible endpoint (default http://localhost:11434/v1)
+    OPENAI_BASE_URL             OpenAI-compatible endpoint (no default; required for openai-compatible)
     API_PROVIDER                anthropic | openai | openrouter | openai-compatible
     MODEL                       model id (default varies by provider)
     MAX_TURNS                   max agentic loop iterations per Chat turn or Batch run (default 20)
@@ -1136,19 +1136,20 @@ def _fetch_models(provider: str) -> list:
                     if "tools" in (m.get("supported_parameters") or [])
                 ]
         elif provider == "openai-compatible":
-            base = os.environ.get("OPENAI_BASE_URL", "http://localhost:11434/v1").rstrip("/")
-            headers = {}
-            key = os.environ.get("OPENAI_COMPATIBLE_API_KEY", "")
-            if key:
-                headers["Authorization"] = f"Bearer {key}"
-            try:
-                raw = _openai_style_pages(f"{base}/models", headers, timeout=15)
-            except Exception:
-                # Some local servers ignore pagination params; fall back to one shot.
-                resp = httpx.get(f"{base}/models", headers=headers, timeout=15)
-                resp.raise_for_status()
-                raw = resp.json().get("data", [])
-            models = [{"id": m["id"], "name": m["id"]} for m in raw]
+            base = os.environ.get("OPENAI_BASE_URL", "").strip().rstrip("/")
+            if base:
+                headers = {}
+                key = os.environ.get("OPENAI_COMPATIBLE_API_KEY", "")
+                if key:
+                    headers["Authorization"] = f"Bearer {key}"
+                try:
+                    raw = _openai_style_pages(f"{base}/models", headers, timeout=15)
+                except Exception:
+                    # Some local servers ignore pagination params; fall back to one shot.
+                    resp = httpx.get(f"{base}/models", headers=headers, timeout=15)
+                    resp.raise_for_status()
+                    raw = resp.json().get("data", [])
+                models = [{"id": m["id"], "name": m["id"]} for m in raw]
     except Exception as exc:
         # Do not cache failures — a later key/URL fix should retry immediately.
         log.warning("Failed to fetch %s models: %s", provider, exc)
@@ -1222,7 +1223,7 @@ def api_get_keys():
         provider: bool(os.environ.get(env_var))
         for provider, env_var in KEY_ENV_VARS.items()
     }
-    status["openai_base_url"] = os.environ.get("OPENAI_BASE_URL", "http://localhost:11434/v1")
+    status["openai_base_url"] = os.environ.get("OPENAI_BASE_URL", "")
     return jsonify(status)
 
 
