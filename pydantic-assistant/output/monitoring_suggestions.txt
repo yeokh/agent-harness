@@ -1,9 +1,45 @@
-Suggested alerts and metrics:
-- Host memory usage > 80% for 5 minutes -> Alert / Auto-restart prevention
-- OOM events or kernel OOM killer invocations -> Pager
-- Database connection pool usage > 75% -> Warn; >90% -> Critical
-- Error rate > 1% of requests for 5 minutes -> Alert
-- Slow query duration > 2s on critical endpoints -> Alert
-- Disk I/O errors or ext4 I/O error occurrences -> Alert
-- Rate of 4xx/5xx responses increasing beyond baseline -> Alert
-- Backup job I/O and duration metrics -> Monitor and correlate with host I/O spikes
+Monitoring and Alerting Suggestions
+
+Metrics to collect and alerts to configure:
+
+1. Memory and OOM detection
+- Metrics: per-process RSS, cgroup memory usage, host free memory, swap usage
+- Alert: memory usage > 85% of physical RAM for > 5 minutes
+- Alert: OOM kill events detected in kernel logs
+- Action: trigger automated heap dump and notify on-call
+
+2. Application health and restarts
+- Metrics: systemd service restart count, StartLimit hits
+- Alert: service restarts > 3 in 5 minutes
+- Action: temporary disable auto-restart and notify on-call
+
+3. Disk and I/O
+- Metrics: disk I/O error counts, I/O latency (iops, await), device error counters for dm-0
+- Alert: ext4 I/O error or block device errors detected
+- Action: run SMART test, check SAN paths
+
+4. Network and SYN flood
+- Metrics: SYN backlog size, tcp_retransmits, connection rate to port 8080
+- Alert: possible SYN flood if many SYNs with low completions over short window
+- Action: enable mitigation via firewall or upstream DDoS protection
+
+5. Security denials (AppArmor)
+- Metrics: audit log denials by profile and process
+- Alert: repeated AppArmor DENIED events for a given container or process
+- Action: review and adjust profile
+
+6. Logs and rate limiting
+- Metrics: log suppression/rate limiting events from journald
+- Alert: journald suppressed > 100 messages in 5 minutes
+- Action: increase logging capacity or reduce log noise from flapping services
+
+7. JVM-specific
+- Metrics: heap usage, GC pause time, GC frequency, thread count
+- Alert: GC pause > 1s or young gen GC > 20% CPU for > 2 minutes
+- Action: analyze heap, tune GC or heap sizes
+
+Implementation notes:
+- Use Prometheus + node_exporter (and cAdvisor for containers) for metrics collection.
+- Use Grafana for dashboards and PagerDuty/Slack for alert routing.
+- Use Auditd/ELK or Loki for centralizing audit and kernel messages.
+

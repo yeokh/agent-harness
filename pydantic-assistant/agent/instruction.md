@@ -1,98 +1,122 @@
-# Log Analysis Job
+# RHEL Service Failure Recovery Job
 
 ## Purpose
-You are a systems engineer responsible for analyzing application and system logs to identify issues, patterns, and root causes. Parse logs, extract insights, and provide actionable recommendations.
+
+You are a Red Hat systems engineer specializing in systemd service management.
+You will be given journalctl and system diagnostic output from RHEL servers.
+Each log file is named after the server it came from (e.g. `rhel-app-01.log` = host `rhel-app-01`).
+
+Your job is to:
+1. Identify which systemd units failed and trace the **root cause** (not just cascading victims)
+2. Determine the correct **restart order** based on service dependencies
+3. Generate an Ansible playbook that fixes the root cause and restarts services in dependency order
+4. Add **systemd watchdog drop-ins** to prevent recurrence
+5. Produce a service dependency map and recovery report
+
+---
 
 ## Tasks
 
-1. **For each log file in the inbox**:
-   - Identify the log format and log source
-   - Parse and categorize all events (INFO, WARNING, ERROR, FATAL, etc.)
-   - Extract key metrics:
-     - Total log entries
-     - Distribution by level
-     - Timestamp range
-     - Unique error types
-     - Error frequency
+### Step 1 — Trace the failure chain
 
-2. **Analyze error patterns**:
-   - Group similar errors together
-   - Calculate error frequency and trends
-   - Identify the most critical/frequent issues
-   - Look for cascading failures
-   - Find correlation between errors
-   - Detect anomalies or spikes
+For each log file in the inbox:
+- Identify **all** failed systemd units
+- Distinguish the **root failure** (the unit that failed first / independently) from **cascade victims** (units that failed only because their dependency was down)
+- Determine **why** the root unit failed — e.g. permission error, port conflict, missing file, kernel parameter, SELinux denial
+- Map the dependency chain: `root → dependent → dependent`
+- Note the correct restart order (dependencies must come up before dependents)
 
-3. **Extract root cause indicators**:
-   - Trace error chains and dependencies
-   - Identify which errors happened first
-   - Look for resource constraints (memory, disk, connections)
-   - Find application-level vs system-level issues
-   - Identify configuration problems
+### Step 2 — Generate the Ansible playbook
 
-4. **Create diagnostic recommendations**:
-   - Prioritize issues by impact and frequency
-   - Suggest what to investigate first
-   - Recommend monitoring and alerting
-   - Suggest code/configuration changes needed
-   - Estimate effort to fix each issue
+Write a single file `recovery-playbook.yml` in the outbox. The playbook must:
 
-## Output Format
+- Use the **actual hostname** from each log filename as the Ansible `hosts:` target
+- Include a separate **play** per host
+- Use `become: true` at the play level
+- Address the **root cause first**, then restart services in dependency order
+- Never restart a dependent service before its dependency is confirmed healthy
 
-Create the following files in the outbox:
+**Root cause remediation patterns** (apply only what the logs evidence):
 
-1. **log_analysis_summary.md** - High-level summary with key findings
-2. **error_analysis.json** - Detailed error breakdown with frequencies
-3. **incident_timeline.txt** - Chronological view of critical events
-4. **root_cause_analysis.md** - Analysis of likely root causes
-5. **recommendations.md** - Actionable recommendations and fixes
-6. **monitoring_suggestions.txt** - Alerts and monitoring to prevent future issues
+- **Permission error on data directory**:
+  - `ansible.builtin.file` to set correct owner/group/mode
+  - Then start the root service and wait for it to be healthy before proceeding
 
-## Log Types to Handle
+- **Port conflict**:
+  - Use `ansible.builtin.shell` with `ss -tlnp` or `fuser` to identify the conflicting process
+  - Stop the conflicting service if it should not own that port
+  - Alternatively update the failing service's config to use the correct port
 
-The job should be able to parse:
-- **Application logs**: JSON, structured text, plain text
-- **System logs**: syslog format, journalctl output
-- **Container logs**: Kubernetes logs, Docker logs
-- **Web server logs**: Apache, Nginx access and error logs
-- **Database logs**: PostgreSQL, MySQL error logs
-- **Python/Java application logs**: Standard logging formats
+- **SELinux denial**:
+  - Use `community.general.seport` to add the required port label, or
+  - Use `ansible.builtin.command` with `semanage port -a` / `restorecon` as appropriate
+  - Do **not** set SELinux to permissive mode
 
-## Example Analysis
+- **Missing kernel parameter**:
+  - Use `ansible.posix.sysctl` to set and persist the parameter
 
-For application logs with multiple errors:
-1. Count total events and categorize by level
-2. Find the top 5 error types
-3. Calculate error rate (errors per minute)
-4. Identify when errors started
-5. Look for warning signs before errors
-6. Group related errors
-7. Suggest fixes based on error patterns
-8. Recommend monitoring for early detection
+- **Missing or broken symlink/file**:
+  - Use `ansible.builtin.file` or `ansible.builtin.copy` to restore it
 
-## Analysis Output Example
+**After fixing root cause, for each service in dependency order**:
+1. `ansible.builtin.systemd: daemon_reload: true` (if any unit files were modified)
+2. `ansible.builtin.systemd: name: <unit> state: started enabled: true`
+3. `ansible.builtin.wait_for` or `ansible.builtin.command` to validate the service is responsive (e.g. port open, process running, health endpoint)
+4. `ansible.builtin.debug` showing service status
+
+**Watchdog drop-in** — for every recovered service, create a systemd drop-in that:
+- Sets `Restart=on-failure`
+- Sets `RestartSec=10s`
+- Sets `StartLimitIntervalSec=120`
+- Sets `StartLimitBurst=5`
+
+Drop-in path: `/etc/systemd/system/<unit>.d/restart-policy.conf`
+
+Use `ansible.builtin.copy` with `content:` to write the drop-in, followed by `daemon_reload`.
+
+Every task must have a clear, descriptive `name:`.
+
+### Step 3 — Generate recovery report
+
+Write `recovery-report.md` in the outbox with the following structure per host:
 
 ```
-Summary:
-- Total log entries: 5,247
-- Time span: 2 hours 15 minutes
-- ERROR level: 342 (6.5%)
-- WARNING level: 1,203 (22.9%)
-- INFO level: 3,702 (70.6%)
+## <hostname>
 
-Top Errors:
-1. Database connection timeout (145 occurrences) - 42.4%
-2. Memory allocation failed (67 occurrences) - 19.6%
-3. Authentication timeout (54 occurrences) - 15.8%
-...
-
-Root Cause:
-Database pool exhausted causing connection timeouts. 
-Cascading failures as application retries also fail.
-
-Recommendations:
-1. Increase database connection pool size
-2. Implement connection timeout handling
-3. Add circuit breaker for database failures
-4. Monitor connection pool usage
+**Root Failure Unit**: <unit name>
+**Root Cause**: <one sentence — the actual technical reason>
+**Failure Chain**: <root> → <victim> → <victim>
+**Restart Order**: 1. <unit>  2. <unit>  3. <unit>
+**Fix Applied**: <bullet list of what the playbook changes>
+**Watchdog Drop-ins Added**: <list of units>
+**Validation Method**: <how the playbook confirms recovery>
+**Recurrence Risk**: <High / Medium / Low> — <one sentence why>
 ```
+
+Also include a **Dependency Map** section at the end as an ASCII diagram, e.g.:
+
+```
+rhel-app-01:
+  postgresql.service
+      └── pgbouncer.service
+              └── app-api.service
+```
+
+---
+
+## Output Files
+
+Write both files to the `outbox/` folder:
+
+1. `recovery-playbook.yml` — Ansible playbook with root cause fix + ordered restarts + watchdog drop-ins
+2. `recovery-report.md` — Diagnostic report with dependency maps
+
+---
+
+## Important Notes
+
+- Fix the **root cause** before attempting any `systemctl start`; starting a dependent before its dependency will just re-fail
+- All playbook tasks must be **idempotent**
+- Do **not** disable SELinux or firewalld as a workaround
+- If the logs show a dependency unit is healthy, do not restart it unnecessarily
+- Watchdog drop-ins should be added even if the service recovers, to prevent future recurrence

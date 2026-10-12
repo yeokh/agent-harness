@@ -1,54 +1,53 @@
-Chronological critical events (combined logs)
----
-2026-05-25T08:15:32 [system] WARNING - perf: interrupt took too long (2527 > 2500), lowering kernel.perf_event_max_sample_rate to 78000
-2026-05-25T08:20:45.678000 [application] WARNING - Database connection pool is 85% full (17/20 connections in use)
-2026-05-25T08:21:12.456000 [application] WARNING - Database connection pool is 95% full (19/20 connections in use)
-2026-05-25T08:21:15 [system] ERROR - Out of memory: Kill process 5432 (java) score 650 or sacrifice child
-2026-05-25T08:21:15 [system] ERROR - Killed process 5432 (java) total-vm:2145236kB, anon-rss:1902348kB, file-rss:0kB, shmem-rss:0kB
-2026-05-25T08:21:16 [system] ERROR - oom-kill: constraint=CONSTRAINT_NONE, nodemask=(null), cpuset=/, mems_allowed=0, global_swap_limit=0
-2026-05-25T08:21:32.789000 [application] ERROR - Failed to acquire database connection: timeout waiting for available connection (waited 30 seconds)
-2026-05-25T08:21:32.890000 [application] ERROR - User request failed: unable to fetch user data
-2026-05-25T08:21:33.123000 [application] WARNING - Request timeout for client 192.168.1.100 (127 seconds elapsed)
-2026-05-25T08:21:33.456000 [application] ERROR - Failed to acquire database connection: timeout waiting for available connection (waited 30 seconds)
-2026-05-25T08:21:33.567000 [application] ERROR - User request failed: unable to fetch user data
-2026-05-25T08:21:34.234000 [application] ERROR - Failed to acquire database connection: timeout waiting for available connection (waited 30 seconds)
-2026-05-25T08:21:34.345000 [application] ERROR - User request failed: unable to fetch user data
-2026-05-25T08:21:35.678000 [application] ERROR - Failed to acquire database connection: timeout waiting for available connection (waited 30 seconds)
-2026-05-25T08:21:35.789000 [application] ERROR - User request failed: unable to fetch user data
-2026-05-25T08:21:36.123000 [application] WARNING - Multiple connection errors detected, checking database health
-2026-05-25T08:21:37.456000 [application] ERROR - Database health check failed: unable to execute test query
-2026-05-25T08:21:37.567000 [application] ERROR - Failed to acquire database connection: timeout waiting for available connection (waited 30 seconds)
-2026-05-25T08:21:37.789000 [application] ERROR - User request failed: unable to fetch user data
-2026-05-25T08:21:38.234000 [application] ERROR - Failed to acquire database connection: timeout waiting for available connection (waited 30 seconds)
-2026-05-25T08:21:38.456000 [application] ERROR - User request failed: unable to fetch user data
-2026-05-25T08:21:39.123000 [application] WARNING - Cache hit rate dropping: 42% (normal is 78%)
-2026-05-25T08:21:39.789000 [application] ERROR - Failed to acquire database connection: timeout waiting for available connection (waited 30 seconds)
-2026-05-25T08:21:39.890000 [application] ERROR - User request failed: unable to fetch user data
-2026-05-25T08:21:40.567000 [application] ERROR - Failed to acquire database connection: timeout waiting for available connection (waited 30 seconds)
-2026-05-25T08:21:40.678000 [application] ERROR - User request failed: unable to fetch user data
-2026-05-25T08:21:41.234000 [application] ERROR - Recovered a stale connection from pool (connection idle for 4 minutes)
-2026-05-25T08:21:42.123000 [application] WARNING - Database connection pool recovered to 60% usage (12/20)
-2026-05-25T08:21:44.234000 [application] ERROR - Failed to process queued request: client connection closed
-2026-05-25T08:21:45.567000 [application] ERROR - Failed to process queued request: client connection closed
-2026-05-25T08:21:46.789000 [application] ERROR - Failed to process queued request: client connection closed
-2026-05-25T08:21:48.456000 [application] WARNING - Retry queue has 12 pending requests
-2026-05-25T08:22:00 [system] ERROR - EXT4-fs warning (device dm-0): ext4_end_bio:330: I/O error -5
-2026-05-25T08:22:00.123000 [application] WARNING - Memory usage at 78% (3.1GB / 4GB)
-2026-05-25T08:22:01.456000 [application] WARNING - Garbage collection triggered
-2026-05-25T08:22:15 [system] WARNING - audit: type=1400 audit(1716619335.567:125): apparmor="DENIED" operation="capable" profile="docker-default" pid=6789 comm="mysql" capability=36 capname="block_suspend"
-2026-05-25T08:22:15.456000 [application] WARNING - Order total mismatch: submitted=1250.00, calculated=1248.50
-2026-05-25T08:22:15.567000 [application] ERROR - Order validation failed: price calculation error
-2026-05-25T08:22:15.789000 [application] ERROR - Failed to create order: validation error
-2026-05-25T08:25:10 [system] WARNING - systemd-journal[456]: Suppressed 234 log messages from /system.slice/application.service.
-2026-05-25T08:40:01 [system] WARNING - perf: interrupt took too long (2456 > 2500), lowering kernel.perf_event_max_sample_rate to 77000
-2026-05-25T08:40:01.234000 [application] WARNING - Query: SELECT * FROM orders WHERE created_date > '2026-05-01' ORDER BY amount DESC
-2026-05-25T08:40:01.567000 [application] WARNING - Missing index on created_date column
-2026-05-25T08:40:02 [system] WARNING - audit: type=1400 audit(1716619602.123:200): apparmor="DENIED" operation="open" profile="docker-default" pid=6789 comm="mysql" requested_mask="r" denied_mask="r" fsuid=1000 ouid=0 name="/sys/kernel/debug" denied_mask_not_used
-2026-05-25T08:50:00 [system] WARNING - TCP: request_sock_TCP: Possible SYN flood on port 8080. Sending cookies.
-2026-05-25T08:50:00.123000 [application] WARNING - API request rate spike detected: 450 req/sec (normal: 120 req/sec)
-2026-05-25T08:50:01 [system] WARNING - TCP: request_sock_TCP: Possible SYN flood on port 8080. Sending cookies.
-2026-05-25T08:50:02 [system] WARNING - TCP: request_sock_TCP: Possible SYN flood on port 8080. Sending cookies.
-2026-05-25T08:50:02.567000 [application] WARNING - 23 requests rate-limited
-2026-05-25T08:50:03 [system] WARNING - audit: type=1400 audit(1716619803.456:234): apparmor="DENIED" operation="exec" profile="docker-default" pid=7890 comm="bash" requested_mask="x" denied_mask="x" fsuid=1000 ouid=0 name="/usr/local/bin/malware_check"
-2026-05-25T08:50:10 [system] WARNING - Rate limiting activated
-2026-05-25T08:50:15 [system] ERROR - [drm:gen8_irq_handler [i915]] *ERROR* CPU pipe A FIFO underrun
+Incident Timeline (critical events) - system.log
+
+2026-05-25 08:00:01 - System boot/kernel messages
+- Linux kernel version logged and boot command line.
+
+2026-05-25 08:00:05 - systemd
+- Started System logging service.
+
+2026-05-25 08:05:00 - application
+- systemd: Started Application Service.
+
+2026-05-25 08:15:32 - perf warning
+- Kernel: perf: interrupt took too long (2527 > 2500), lowered sampling rate.
+
+2026-05-25 08:21:15 - OOM event (critical)
+- Kernel: Out of memory: Kill process 5432 (java) score 650 or sacrifice child
+- Killed process 5432 (java) total-vm:2145236kB, anon-rss:1902348kB
+- oom-kill details logged at 08:21:16
+
+2026-05-25 08:21:32 - Application exited
+- systemd: application.service: Main process exited, code=killed, status=9/KILL
+- 08:21:35 application.service: Failed with result 'signal'.
+- 08:21:45 Hold-off; scheduling restart.
+- 08:21:46 Attempting restart.
+- 08:21:47 Started Application Service.
+
+2026-05-25 08:22:00 - Filesystem I/O error
+- Kernel: EXT4-fs warning (device dm-0): ext4_end_bio:330: I/O error -5
+
+2026-05-25 08:22:15 - AppArmor denial impacting mysql
+- audit: apparmor="DENIED" operation="capable" profile="docker-default" pid=6789 comm="mysql" capability=36 capname="block_suspend"
+
+2026-05-25 08:25:10 - Journal rate suppression
+- systemd-journal[456]: Suppressed 234 log messages from /system.slice/application.service.
+
+2026-05-25 08:30:00-08:31:00 - Backup
+- 08:30:00 Backup job started; 08:31:00 Backup job completed. audit log shows tar accessed /backup/database_2026-05-25.sql on dm-0.
+
+2026-05-25 08:40:01 - perf warning again
+- Kernel lowered perf_event_max_sample_rate to 77000.
+
+2026-05-25 08:50:00-08:50:03 - Network and security events
+- 08:50:00-02 TCP possible SYN flood on port 8080 (three rapid occurrences).
+- 08:50:03 AppArmor denied exec of /usr/local/bin/malware_check in docker-default.
+- 08:50:10 systemd: Rate limiting activated.
+- 08:50:15 Kernel DRM error: CPU pipe A FIFO underrun.
+
+2026-05-25 09:00:00-09:01:00 - Maintenance
+- Daily maintenance, logrotate, disk cleanup freed 2.3GB and completed.
+
+Notes:
+- Timeline indicates OOM at 08:21:15 preceded the filesystem I/O error at 08:22:00 and subsequent noisy logs leading to suppression. The restart of the application may have produced heavy I/O and audit events (backup-related access around 08:30). Network SYN flood events occurred later at 08:50.
+- Correlation: OOM -> process killed -> service restart -> IO error and high logging. Further investigation recommended into memory usage pattern before OOM, and storage health for dm-0.

@@ -11,5 +11,31 @@
     "total_output_tokens": 9233,
     "log_lines": 31,
     "output_files": 6
+  },
+  {
+    "run_id": "2026-10-10T13:22:32.274467+00:00",
+    "status": "completed",
+    "provider": "openai-compatible",
+    "model": "qwen3-235b",
+    "duration_seconds": 53.724956,
+    "total_turns": 8,
+    "total_cost_usd": null,
+    "total_input_tokens": 34967,
+    "total_output_tokens": 3829,
+    "log_lines": 28,
+    "output_files": 6
+  },
+  {
+    "run_id": "2026-10-11T04:55:48.239228+00:00",
+    "status": "completed",
+    "provider": "openai",
+    "model": "gpt-5-mini",
+    "duration_seconds": 56.824652,
+    "total_turns": 9,
+    "total_cost_usd": null,
+    "total_input_tokens": 59273,
+    "total_output_tokens": 8298,
+    "log_lines": 40,
+    "output_files": 6
   }
 ]

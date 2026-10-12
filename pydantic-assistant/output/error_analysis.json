@@ -1,103 +1,84 @@
 {
-  "files": {
-    "application.log": {
-      "total_entries": 83,
-      "by_level": {
-        "INFO": 46,
-        "WARNING": 14,
-        "ERROR": 23
-      },
-      "timestamp_range": [
-        "2026-05-25T08:00:01.234000",
-        "2026-05-25T09:00:00.789000"
-      ],
-      "unique_error_types": {
-        "Failed to acquire database connection: timeout waiting for available connection (waited 30 seconds)": 8,
-        "User request failed: unable to fetch user data": 8,
-        "Database health check failed: unable to execute test query": 1,
-        "Recovered a stale connection from pool (connection idle for 4 minutes)": 1,
-        "Failed to process queued request: client connection closed": 3,
-        "Order validation failed: price calculation error": 1,
-        "Failed to create order: validation error": 1
-      },
-      "error_trend_per_minute": {
-        "2026-05-25T08:21:00": 21,
-        "2026-05-25T08:22:00": 2
-      }
-    },
-    "system.log": {
-      "total_entries": 34,
-      "by_level": {
-        "INFO": 19,
-        "WARNING": 10,
-        "ERROR": 5
-      },
-      "timestamp_range": [
-        "2026-05-25T08:00:01",
-        "2026-05-25T09:01:00"
-      ],
-      "unique_error_types": {
-        "Out of memory: Kill process <NUM> (java) score <NUM> or sacrifice child": 1,
-        "Killed process <NUM> (java) total-vm:2145236kB, anon-rss:1902348kB, file-rss:0kB, shmem-rss:0kB": 1,
-        "oom-kill: constraint=CONSTRAINT_NONE, nodemask=(null), cpuset=/, mems_allowed=0, global_swap_limit=0": 1,
-        "EXT4-fs warning (device dm-0): ext4_end_bio:<NUM>: I<PATH> error -5": 1,
-        "[drm:gen8_irq_handler [i915]] *ERROR* CPU pipe A FIFO underrun": 1
-      },
-      "error_trend_per_minute": {
-        "2026-05-25T08:21:00": 3,
-        "2026-05-25T08:22:00": 1,
-        "2026-05-25T08:50:00": 1
-      }
-    }
+  "file": "system.log",
+  "total_entries": 34,
+  "time_range": {
+    "start": "2026-05-25T08:00:01",
+    "end": "2026-05-25T09:01:00"
   },
-  "top_errors": [
-    [
-      "Failed to acquire database connection: timeout waiting for available connection (waited 30 seconds)",
-      8
-    ],
-    [
-      "User request failed: unable to fetch user data",
-      8
-    ],
-    [
-      "Failed to process queued request: client connection closed",
-      3
-    ],
-    [
-      "Database health check failed: unable to execute test query",
-      1
-    ],
-    [
-      "Recovered a stale connection from pool (connection idle for 4 minutes)",
-      1
-    ],
-    [
-      "Order validation failed: price calculation error",
-      1
-    ],
-    [
-      "Failed to create order: validation error",
-      1
-    ],
-    [
-      "Out of memory: Kill process <NUM> (java) score <NUM> or sacrifice child",
-      1
-    ],
-    [
-      "Killed process <NUM> (java) total-vm:2145236kB, anon-rss:1902348kB, file-rss:0kB, shmem-rss:0kB",
-      1
-    ],
-    [
-      "oom-kill: constraint=CONSTRAINT_NONE, nodemask=(null), cpuset=/, mems_allowed=0, global_swap_limit=0",
-      1
-    ],
-    [
-      "EXT4-fs warning (device dm-0): ext4_end_bio:<NUM>: I<PATH> error -5",
-      1
-    ],
-    [
-      "[drm:gen8_irq_handler [i915]] *ERROR* CPU pipe A FIFO underrun",
-      1
-    ]
+  "levels": {
+    "INFO_NOTICE": 18,
+    "WARNING": 10,
+    "ERROR_FATAL": 6
+  },
+  "errors": [
+    {
+      "type": "OOM_kill",
+      "first_seen": "2026-05-25T08:21:15",
+      "count": 3,
+      "examples": [
+        "May 25 08:21:15 prod-server01 kernel: Out of memory: Kill process 5432 (java) score 650 or sacrifice child",
+        "May 25 08:21:15 prod-server01 kernel: Killed process 5432 (java) total-vm:2145236kB, anon-rss:1902348kB, file-rss:0kB, shmem-rss:0kB",
+        "May 25 08:21:16 prod-server01 kernel: oom-kill: constraint=CONSTRAINT_NONE, nodemask=(null), cpuset=/, mems_allowed=0, global_swap_limit=0"
+      ],
+      "severity": "critical",
+      "likely_root_causes": ["Memory leak or insufficient memory limits for Java process","Excessive memory usage by application or other processes","Misconfigured JVM heap larger than host RAM"]
+    },
+    {
+      "type": "Application_service_exit",
+      "first_seen": "2026-05-25T08:21:32",
+      "count": 4,
+      "examples": [
+        "May 25 08:21:32 prod-server01 systemd: application.service: Main process exited, code=killed, status=9/KILL",
+        "May 25 08:21:35 prod-server01 systemd: application.service: Failed with result 'signal'.",
+        "May 25 08:21:45 prod-server01 systemd: application.service: Service hold-off time over, scheduling restart.",
+        "May 25 08:21:46 prod-server01 systemd: application.service: Attempting restart."
+      ],
+      "severity": "high",
+      "likely_root_causes": ["OOM event killed main process","Application not handling out-of-memory conditions gracefully","Restart loops causing log spam"]
+    },
+    {
+      "type": "EXT4_IO_error",
+      "first_seen": "2026-05-25T08:22:00",
+      "count": 1,
+      "examples": [
+        "May 25 08:22:00 prod-server01 kernel: EXT4-fs warning (device dm-0): ext4_end_bio:330: I/O error -5"
+      ],
+      "severity": "high",
+      "likely_root_causes": ["Underlying storage device issues (disk, SAN, iSCSI)","Driver bugs or firmware problems","Transient I/O path errors due to heavy I/O during restart"]
+    },
+    {
+      "type": "AppArmor_DENIED",
+      "first_seen": "2026-05-25T08:00:15",
+      "count": 3,
+      "examples": [
+        "May 25 08:00:15 prod-server01 kernel: audit: type=1400 audit(1716619215.234:5): apparmor=\"STATUS\" operation=\"profile_load\" name=\"docker-default\" name2=\"default\" pid=1234 comm=\"apparmor_parser\"",
+        "May 25 08:22:15 prod-server01 kernel: audit: type=1400 audit(1716619335.567:125): apparmor=\"DENIED\" operation=\"capable\" profile=\"docker-default\" pid=6789 comm=\"mysql\" capability=36 capname=\"block_suspend\"",
+        "May 25 08:50:03 prod-server01 kernel: audit: type=1400 audit(1716619803.456:234): apparmor=\"DENIED\" operation=\"exec\" profile=\"docker-default\" pid=7890 comm=\"bash\" requested_mask=\"x\" denied_mask=\"x\" fsuid=1000 ouid=0 name=\"/usr/local/bin/malware_check\""
+      ],
+      "severity": "medium",
+      "likely_root_causes": ["Strict AppArmor profile blocking required capabilities","Container processes attempting restricted ops","Misconfigured security profile for containers"]
+    },
+    {
+      "type": "SYN_flood_warning",
+      "first_seen": "2026-05-25T08:50:00",
+      "count": 3,
+      "examples": [
+        "May 25 08:50:00 prod-server01 kernel: TCP: request_sock_TCP: Possible SYN flood on port 8080. Sending cookies.",
+        "May 25 08:50:01 prod-server01 kernel: TCP: request_sock_TCP: Possible SYN flood on port 8080. Sending cookies.",
+        "May 25 08:50:02 prod-server01 kernel: TCP: request_sock_TCP: Possible SYN flood on port 8080. Sending cookies."
+      ],
+      "severity": "medium",
+      "likely_root_causes": ["Traffic spike or deliberate SYN flood (DDoS)","Misbehaving client(s) opening many connections","Application not accepting connections quickly leading to backlog" ]
+    },
+    {
+      "type": "DRM_FIFO_underrun",
+      "first_seen": "2026-05-25T08:50:15",
+      "count": 1,
+      "examples": [
+        "May 25 08:50:15 prod-server01 kernel: [drm:gen8_irq_handler [i915]] *ERROR* CPU pipe A FIFO underrun"
+      ],
+      "severity": "low",
+      "likely_root_causes": ["Graphics driver/hardware timing issue","Unlikely to affect headless server workloads"]
+    }
   ]
 }
